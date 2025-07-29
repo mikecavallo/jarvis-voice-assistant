@@ -1,0 +1,19 @@
+# Voice Input
+SpeechRecognition==3.10.0
+pyaudio==0.2.11
+faster-whisper==0.10.0
+
+# Voice Output 
+elevenlabs==0.2.26
+pygame==2.5.2
+
+# System Integration
+pyautogui==0.9.54
+webbrowser
+
+# Utilities
+requests==2.31.0
+python-dotenv==1.0.0
+
+# Optional: If you want to use OpenAI Whisper instead
+# openai-whisper==20231117
