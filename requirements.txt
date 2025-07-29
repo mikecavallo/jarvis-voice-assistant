@@ -9,7 +9,6 @@ pygame==2.5.2
 
 # System Integration
 pyautogui==0.9.54
-webbrowser
 
 # Utilities
 requests==2.31.0
