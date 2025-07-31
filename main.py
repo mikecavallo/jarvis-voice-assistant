@@ -1,12 +1,25 @@
 """
-Jarvis Assistant - Main Entry Point
-A modular voice-controlled AI assistant built in Python.
+Jarvis Assistant - Main Entry Point.
 
-This is the main orchestrator that brings together:
-- Voice input (speech recognition)
-- Command parsing and execution
-- Voice output (text-to-speech)
-- State management
+A modular voice-controlled AI assistant built in Python that demonstrates
+advanced architecture patterns and component integration.
+
+This main orchestrator coordinates all system components:
+- Voice input with wake word detection and speech recognition
+- Natural language command parsing and execution
+- High-quality voice output using ElevenLabs TTS
+- Persistent state management with JSON storage
+- Multi-mode operation (voice, text, test)
+- Graceful error handling and shutdown
+
+Supported execution modes:
+- Voice Mode: Full voice control with wake word detection
+- Text Mode: Interactive command-line interface
+- Test Mode: Comprehensive system diagnostics
+
+Usage:
+    python main.py [mode]    # mode: voice, text, test
+    python main.py           # Interactive mode selection
 """
 
 import sys

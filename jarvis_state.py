@@ -1,6 +1,18 @@
 """
-Jarvis State Management.
-Handles the shared state file for goals, todos, logs, and current tasks.
+Jarvis State Management Module.
+
+This module provides persistent state management for the Jarvis Assistant using
+JSON file storage. It handles:
+- Goal tracking and management
+- Todo list with priority and assignment
+- Action logging with component tracking
+- Current task management for AI agents
+- Inter-agent communication system
+- Session handoff coordination
+- Session summary storage
+
+The state is automatically saved to disk after each modification to ensure
+data persistence across system restarts.
 """
 
 import json
@@ -10,158 +22,378 @@ from pathlib import Path
 from typing import Dict, List, Any
 
 class JarvisState:
-    """Manages Jarvis's persistent state using JSON storage."""
+    """
+    Manages persistent state for Jarvis Assistant using JSON file storage.
+    
+    This class provides a centralized state management system that tracks:
+    - System goals and objectives
+    - Todo items with status, priority, and assignment
+    - Action logs for debugging and monitoring
+    - Current tasks for AI agents (Claude, Gemini, User)
+    - Inter-agent messaging and task handoff
+    - Session summaries for continuity
+    
+    The state is automatically persisted to disk after each modification
+    to ensure data survives system restarts and crashes.
+    
+    Attributes:
+        state_file (Path): Path to the JSON state file
+        state (dict): In-memory state dictionary
+    """
     
     def __init__(self, state_file: str = "jarvis_state.json"):
-        """Initialize state manager with specified file."""
+        """
+        Initialize the state manager with persistent JSON storage.
+        
+        Args:
+            state_file: Path to JSON file for state persistence (defaults to jarvis_state.json)
+        """
         self.state_file = Path(state_file)
         self.load_state()
     
     def load_state(self):
-        """Load state from JSON file or create default structure."""
+        """
+        Load state from JSON file or initialize with default structure.
+        
+        If the state file exists, loads the existing state. Otherwise,
+        creates a new state with default goals, initial todos, and
+        system metadata.
+        """
         if self.state_file.exists():
-            with open(self.state_file, 'r') as f:
-                self.state = json.load(f)
+            try:
+                with open(self.state_file, 'r', encoding='utf-8') as f:
+                    self.state = json.load(f)
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Warning: Could not load state file: {e}")
+                print("Creating new state file...")
+                self._create_default_state()
         else:
-            # Create default state structure
-            self.state = {
-                "goals": [
-                    "Build a modular voice-controlled AI assistant",
-                    "Learn Python architecture and Git workflows",
-                    "Add daily features to expand capabilities"
-                ],
-                "todo": [
-                    {
-                        "id": 1,
-                        "task": "Implement basic voice recognition",
-                        "assigned_to": "claude",
-                        "status": "in_progress",
-                        "created": self._get_timestamp(),
-                        "priority": "high"
-                    }
-                ],
-                "log": [
-                    {
-                        "timestamp": self._get_timestamp(),
-                        "action": "jarvis_state_initialized",
-                        "details": "Created initial state structure",
-                        "component": "state_manager"
-                    }
-                ],
-                "current_task": {
-                    "claude": "Setting up project backbone",
-                    "gemini": None,
-                    "user": "Reviewing architecture and learning"
-                },
-                "metadata": {
+            self._create_default_state()
+    
+    def _create_default_state(self):
+        """
+        Create the default state structure for a new Jarvis installation.
+        
+        Sets up initial goals, sample todo, logging system, and metadata.
+        """
+        self.state = {
+            "goals": [
+                "Build a modular voice-controlled AI assistant",
+                "Learn Python architecture and Git workflows",
+                "Add daily features to expand capabilities"
+            ],
+            "todo": [
+                {
+                    "id": 1,
+                    "task": "Implement basic voice recognition",
+                    "assigned_to": "claude",
+                    "status": "in_progress",
                     "created": self._get_timestamp(),
-                    "last_updated": self._get_timestamp(),
-                    "version": "1.0.0"
+                    "priority": "high"
                 }
+            ],
+            "log": [
+                {
+                    "timestamp": self._get_timestamp(),
+                    "action": "jarvis_state_initialized",
+                    "details": "Created initial state structure",
+                    "component": "state_manager"
+                }
+            ],
+            "current_task": {
+                "claude": "Setting up project backbone",
+                "gemini": None,
+                "user": "Reviewing architecture and learning"
+            },
+            "metadata": {
+                "created": self._get_timestamp(),
+                "last_updated": self._get_timestamp(),
+                "version": "1.0.0"
             }
-            self.save_state()
-    
-    def save_state(self):
-        """Save current state to JSON file."""
-        self.state["metadata"]["last_updated"] = self._get_timestamp()
-        with open(self.state_file, 'w') as f:
-            json.dump(self.state, f, indent=4)
-    
-    def _get_timestamp(self) -> str:
-        """Get current timestamp in ISO format."""
-        return datetime.now().isoformat()
-    
-    # Goals management
-    def add_goal(self, goal: str):
-        """Add a new goal to the list."""
-        self.state["goals"].append(goal)
-        self.log_action("goal_added", f"Added goal: {goal}")
+        }
         self.save_state()
     
-    def get_goals(self) -> List[str]:
-        """Get all current goals."""
-        return self.state["goals"]
+    def save_state(self):
+        """
+        Save current state to JSON file with updated timestamp.
+        
+        Updates the last_updated metadata and writes the entire state
+        to disk with proper formatting.
+        """
+        try:
+            self.state["metadata"]["last_updated"] = self._get_timestamp()
+            with open(self.state_file, 'w', encoding='utf-8') as f:
+                json.dump(self.state, f, indent=4, ensure_ascii=False)
+        except IOError as e:
+            print(f"Error saving state file: {e}")
     
-    # Todo management
-    def add_todo(self, task: str, assigned_to: str = "unassigned", priority: str = "medium"):
-        """Add a new todo item."""
+    def _get_timestamp(self) -> str:
+        """
+        Get current timestamp in ISO 8601 format.
+        
+        Returns:
+            str: Current timestamp as ISO formatted string
+        """
+        return datetime.now().isoformat()
+    
+    # Goals Management Methods
+    
+    def add_goal(self, goal: str):
+        """
+        Add a new goal to the system goal list.
+        
+        Args:
+            goal: Description of the new goal to track
+        """
+        if goal and goal.strip():
+            self.state["goals"].append(goal.strip())
+            self.log_action("goal_added", f"Added goal: {goal}")
+            self.save_state()
+    
+    def remove_goal(self, goal: str) -> bool:
+        """
+        Remove a goal from the system goal list.
+        
+        Args:
+            goal: Goal description to remove
+            
+        Returns:
+            bool: True if goal was found and removed, False otherwise
+        """
+        if goal in self.state["goals"]:
+            self.state["goals"].remove(goal)
+            self.log_action("goal_removed", f"Removed goal: {goal}")
+            self.save_state()
+            return True
+        return False
+    
+    def get_goals(self) -> List[str]:
+        """
+        Get all current system goals.
+        
+        Returns:
+            List[str]: List of current goal descriptions
+        """
+        return self.state["goals"].copy()
+    
+    # Todo Management Methods
+    
+    def add_todo(self, task: str, assigned_to: str = "unassigned", priority: str = "medium") -> int:
+        """
+        Add a new todo item to the task list.
+        
+        Args:
+            task: Description of the task to be completed
+            assigned_to: Agent or person responsible (claude, gemini, user, system)
+            priority: Task priority level (high, medium, low)
+            
+        Returns:
+            int: Unique ID assigned to the new todo item
+        """
+        if not task or not task.strip():
+            return None
+            
+        # Generate unique ID
         todo_id = max([t["id"] for t in self.state["todo"]], default=0) + 1
+        
         todo_item = {
             "id": todo_id,
-            "task": task,
+            "task": task.strip(),
             "assigned_to": assigned_to,
             "status": "pending",
             "created": self._get_timestamp(),
             "priority": priority
         }
+        
         self.state["todo"].append(todo_item)
         self.log_action("todo_added", f"Added todo: {task} (assigned to {assigned_to})")
         self.save_state()
         return todo_id
     
-    def update_todo_status(self, todo_id: int, status: str):
-        """Update the status of a todo item."""
+    def update_todo_status(self, todo_id: int, status: str) -> bool:
+        """
+        Update the status of a specific todo item.
+        
+        Args:
+            todo_id: Unique identifier of the todo item
+            status: New status (pending, in_progress, completed, cancelled)
+            
+        Returns:
+            bool: True if todo was found and updated, False otherwise
+        """
+        valid_statuses = ["pending", "in_progress", "completed", "cancelled"]
+        if status not in valid_statuses:
+            print(f"Invalid status: {status}. Valid options: {valid_statuses}")
+            return False
+            
         for todo in self.state["todo"]:
             if todo["id"] == todo_id:
+                old_status = todo["status"]
                 todo["status"] = status
                 todo["updated"] = self._get_timestamp()
-                self.log_action("todo_updated", f"Todo {todo_id} status changed to {status}")
+                self.log_action("todo_updated", f"Todo {todo_id} status: {old_status} → {status}")
                 self.save_state()
                 return True
         return False
     
-    def get_todos(self, status: str = None) -> List[Dict]:
-        """Get todos, optionally filtered by status."""
+    def get_todos(self, status: str = None, assigned_to: str = None) -> List[Dict]:
+        """
+        Get todo items with optional filtering.
+        
+        Args:
+            status: Filter by status (pending, in_progress, completed, cancelled)
+            assigned_to: Filter by assignee (claude, gemini, user, system)
+            
+        Returns:
+            List[Dict]: List of todo items matching the filter criteria
+        """
+        todos = self.state["todo"].copy()
+        
         if status:
-            return [t for t in self.state["todo"] if t["status"] == status]
-        return self.state["todo"]
+            todos = [t for t in todos if t["status"] == status]
+        
+        if assigned_to:
+            todos = [t for t in todos if t["assigned_to"] == assigned_to]
+            
+        return todos
     
-    # Logging
+    def remove_todo(self, todo_id: int) -> bool:
+        """
+        Remove a todo item from the list.
+        
+        Args:
+            todo_id: Unique identifier of the todo to remove
+            
+        Returns:
+            bool: True if todo was found and removed, False otherwise
+        """
+        for i, todo in enumerate(self.state["todo"]):
+            if todo["id"] == todo_id:
+                removed_todo = self.state["todo"].pop(i)
+                self.log_action("todo_removed", f"Removed todo {todo_id}: {removed_todo['task']}")
+                self.save_state()
+                return True
+        return False
+    
+    # Logging Methods
+    
     def log_action(self, action: str, details: str, component: str = "system"):
-        """Add an entry to the action log."""
+        """
+        Add an entry to the system action log.
+        
+        Automatically manages log size to prevent excessive file growth
+        by keeping only the most recent 100 entries.
+        
+        Args:
+            action: Type of action performed (descriptive identifier)
+            details: Detailed description of what happened
+            component: System component that performed the action
+        """
         log_entry = {
             "timestamp": self._get_timestamp(),
             "action": action,
             "details": details,
             "component": component
         }
+        
         self.state["log"].append(log_entry)
-        # Keep only last 100 log entries to prevent file from growing too large
+        
+        # Maintain log size limit to prevent file bloat
         if len(self.state["log"]) > 100:
             self.state["log"] = self.state["log"][-100:]
     
-    def get_recent_logs(self, count: int = 10) -> List[Dict]:
-        """Get the most recent log entries."""
-        return self.state["log"][-count:]
+    def get_recent_logs(self, count: int = 10, component: str = None) -> List[Dict]:
+        """
+        Get the most recent log entries with optional component filtering.
+        
+        Args:
+            count: Maximum number of log entries to return
+            component: Filter logs by specific component (optional)
+            
+        Returns:
+            List[Dict]: List of recent log entries, newest first
+        """
+        logs = self.state["log"]
+        
+        if component:
+            logs = [log for log in logs if log["component"] == component]
+        
+        return logs[-count:] if logs else []
     
-    # Current task management
+    # Current Task Management Methods
+    
     def set_current_task(self, agent: str, task: str):
-        """Set what an agent (claude/gemini/user) is currently working on."""
+        """
+        Set the current task for a specific agent.
+        
+        Tracks what each agent (claude, gemini, user) is actively working on
+        for coordination and status reporting.
+        
+        Args:
+            agent: The agent name (claude, gemini, user, system)
+            task: Description of the current task, or None to clear
+        """
+        valid_agents = ["claude", "gemini", "user", "system"]
+        if agent not in valid_agents:
+            print(f"Warning: Unknown agent '{agent}'. Valid agents: {valid_agents}")
+        
         self.state["current_task"][agent] = task
         self.log_action("task_assigned", f"{agent} is now working on: {task}")
         self.save_state()
     
     def get_current_task(self, agent: str) -> str:
-        """Get current task for specified agent."""
+        """
+        Get the current task for a specific agent.
+        
+        Args:
+            agent: The agent name to query
+            
+        Returns:
+            str: Current task description, or None if no task assigned
+        """
         return self.state["current_task"].get(agent)
     
     def get_all_current_tasks(self) -> Dict[str, str]:
-        """Get all current tasks."""
-        return self.state["current_task"]
-    
-    # AI Agent Communication System
-    def add_agent_message(self, from_agent: str, to_agent: str, message: str, message_type: str = "info"):
         """
-        Add a message from one AI agent to another.
+        Get current tasks for all agents.
+        
+        Returns:
+            Dict[str, str]: Mapping of agent names to their current tasks
+        """
+        return self.state["current_task"].copy()
+    
+    def clear_current_task(self, agent: str):
+        """
+        Clear the current task for a specific agent.
         
         Args:
-            from_agent: The agent sending the message (claude, gemini, user)
-            to_agent: The agent receiving the message (claude, gemini, user)
+            agent: The agent name to clear the task for
+        """
+        self.set_current_task(agent, None)
+    
+    # AI Agent Communication System Methods
+    def add_agent_message(self, from_agent: str, to_agent: str, message: str, message_type: str = "info") -> int:
+        """
+        Add a message from one AI agent to another for inter-agent communication.
+        
+        Enables AI agents to communicate with each other for task coordination,
+        handoffs, and information sharing.
+        
+        Args:
+            from_agent: The agent sending the message (claude, gemini, user, system)
+            to_agent: The agent receiving the message (claude, gemini, user, system)
             message: The message content
-            message_type: Type of message (info, request, response, handoff)
+            message_type: Type of message (info, request, response, handoff, error)
+            
+        Returns:
+            int: Unique message ID for tracking
         """
         if "agent_messages" not in self.state:
             self.state["agent_messages"] = []
+        
+        valid_types = ["info", "request", "response", "handoff", "error"]
+        if message_type not in valid_types:
+            message_type = "info"
         
         message_entry = {
             "id": len(self.state["agent_messages"]) + 1,
@@ -174,6 +406,11 @@ class JarvisState:
         }
         
         self.state["agent_messages"].append(message_entry)
+        
+        # Keep only last 50 messages to prevent bloat
+        if len(self.state["agent_messages"]) > 50:
+            self.state["agent_messages"] = self.state["agent_messages"][-50:]
+        
         self.log_action("agent_message", f"{from_agent} → {to_agent}: {message[:50]}...", "communication")
         self.save_state()
         return message_entry["id"]
@@ -317,5 +554,5 @@ class JarvisState:
         
         return self.state["session_summaries"][-1]
 
-# Global state instance
+# Global state instance - shared across all Jarvis components
 jarvis_state = JarvisState()
