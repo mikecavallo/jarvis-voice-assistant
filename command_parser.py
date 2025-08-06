@@ -11,10 +11,12 @@ added by extending the command dictionary or using the add_custom_command method
 
 import re
 import webbrowser
+import asyncio
 from datetime import datetime
 from typing import Dict, Optional, Callable, List
 from urllib.parse import quote_plus
-from jarvis_state import jarvis_state
+from memory.state_manager import jarvis_state
+from memory.conversation_manager import conversation_manager
 
 
 class CommandParser:
@@ -168,7 +170,8 @@ class CommandParser:
         1. Normalizes the input text
         2. Attempts to match against all known command patterns
         3. Executes the first matching command
-        4. Returns the response text for voice synthesis
+        4. Falls back to conversational AI if no command matches
+        5. Returns the response text for voice synthesis
         
         Args:
             command_text: The recognized speech text from voice input
@@ -205,9 +208,16 @@ class CommandParser:
                         jarvis_state.log_action("command_error", error_msg, "command_parser")
                         return f"Sorry, I encountered an error: {str(e)}"
         
-        # No matching command found
-        jarvis_state.log_action("command_unknown", f"Unknown command: {command_text}", "command_parser")
-        return f"I don't understand '{command_text}'. Say 'help' to see available commands."
+        # No matching command found - try conversational AI
+        try:
+            jarvis_state.log_action("fallback_to_conversation", f"No command match, using AI: {command_text}", "command_parser")
+            # Use asyncio to run the async conversation method
+            response = asyncio.run(conversation_manager.get_response(command_text))
+            jarvis_state.log_action("conversation_response", "Generated AI response", "command_parser")
+            return response
+        except Exception as e:
+            jarvis_state.log_action("conversation_error", f"AI conversation failed: {e}", "command_parser")
+            return f"I don't understand '{command_text}'. Say 'help' to see available commands."
     
     # Built-in Command Implementations
     

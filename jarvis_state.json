@@ -10,507 +10,620 @@
             "task": "Implement basic voice recognition",
             "assigned_to": "claude",
             "status": "in_progress",
-            "created": "2025-07-28T21:10:17.845287",
+            "created": "2025-08-05T12:18:22.933459",
             "priority": "high"
-        },
-        {
-            "id": 2,
-            "task": "Test todo item",
-            "assigned_to": "system",
-            "status": "pending",
-            "created": "2025-07-28T21:20:41.279009",
-            "priority": "low"
-        },
-        {
-            "id": 3,
-            "task": "Test todo item",
-            "assigned_to": "system",
-            "status": "pending",
-            "created": "2025-07-31T10:20:27.316660",
-            "priority": "low"
         }
     ],
     "log": [
         {
-            "timestamp": "2025-07-28T21:10:17.845313",
-            "action": "jarvis_state_initialized",
-            "details": "Created initial state structure",
-            "component": "state_manager"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:19.208719",
-            "action": "parser_initialized",
-            "details": "Command parser ready",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:19.241208",
-            "action": "elevenlabs_initialized",
-            "details": "Using voice ID: 21m00Tcm4TlvDq8ikWAM",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:19.743472",
-            "action": "elevenlabs_connected",
-            "details": "API connection successful",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:28.975756",
-            "action": "whisper_initialized",
-            "details": "Whisper model loaded successfully",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:31.198146",
-            "action": "mic_calibrated",
-            "details": "Microphone calibrated for ambient noise",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:31.224604",
-            "action": "jarvis_initialized",
-            "details": "All components loaded successfully",
-            "component": "main"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:31.224645",
-            "action": "task_assigned",
-            "details": "claude is now working on: Jarvis system initialization complete",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:31.229046",
-            "action": "command_parsed",
-            "details": "Processing: what time is it",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:31.229281",
-            "action": "command_executed",
-            "details": "Executed time",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:31.229312",
-            "action": "tts_request",
-            "details": "Speaking: Testing Jarvis voice output...",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:34.423499",
-            "action": "tts_success",
-            "details": "Speech played successfully",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-28T21:20:41.279023",
-            "action": "todo_added",
-            "details": "Added todo: Test todo item (assigned to system)",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:05.509781",
-            "action": "parser_initialized",
-            "details": "Command parser ready",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:05.549649",
-            "action": "elevenlabs_initialized",
-            "details": "Using voice ID: 21m00Tcm4TlvDq8ikWAM",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:05.972811",
-            "action": "elevenlabs_connected",
-            "details": "API connection successful",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:08.018844",
-            "action": "whisper_initialized",
-            "details": "Whisper model loaded successfully",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:10.213159",
-            "action": "mic_calibrated",
-            "details": "Microphone calibrated for ambient noise",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:10.229320",
-            "action": "jarvis_initialized",
-            "details": "All components loaded successfully",
-            "component": "main"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:10.229387",
-            "action": "task_assigned",
-            "details": "claude is now working on: Jarvis system initialization complete",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:10.231556",
-            "action": "task_assigned",
-            "details": "user is now working on: Interactive text mode",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:10.233659",
-            "action": "command_parsed",
-            "details": "Processing: what time is it",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:10.234120",
-            "action": "command_executed",
-            "details": "Executed time",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:10.234163",
-            "action": "tts_request",
-            "details": "Speaking: The current time is 09:23 PM...",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:13.810888",
-            "action": "tts_success",
-            "details": "Speech played successfully",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:13.811004",
-            "action": "command_parsed",
-            "details": "Processing: help",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:13.813367",
-            "action": "command_executed",
-            "details": "Executed help",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:13.813405",
-            "action": "tts_request",
-            "details": "Speaking: Here are the commands I understand: time - Get cur...",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:14.806925",
-            "action": "listening_stopped",
-            "details": "Voice input stopped",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-28T21:23:14.806975",
+            "timestamp": "2025-08-06T15:06:12.656981",
             "action": "playback_stopped",
             "details": "Audio playback stopped",
             "component": "elevenlabs_output"
         },
         {
-            "timestamp": "2025-07-28T21:23:14.806982",
+            "timestamp": "2025-08-06T15:06:12.656989",
             "action": "jarvis_shutdown",
             "details": "System shutdown completed",
             "component": "main"
         },
         {
-            "timestamp": "2025-07-28T21:23:14.806996",
+            "timestamp": "2025-08-06T15:06:12.657052",
             "action": "task_assigned",
             "details": "claude is now working on: None",
             "component": "system"
         },
         {
-            "timestamp": "2025-07-28T23:17:56.902126",
-            "action": "session_saved",
-            "details": "Session summary saved: \ud83c\udf89 Successfully built and tested Jarvis Assistant b...",
-            "component": "session_management"
-        },
-        {
-            "timestamp": "2025-07-28T23:17:56.902474",
-            "action": "agent_message",
-            "details": "claude \u2192 gemini: Jarvis backbone complete\\! All core systems tested...",
-            "component": "communication"
-        },
-        {
-            "timestamp": "2025-07-31T10:20:15.057458",
+            "timestamp": "2025-08-06T15:10:14.160729",
             "action": "parser_initialized",
             "details": "Command parser ready",
             "component": "command_parser"
         },
         {
-            "timestamp": "2025-07-31T10:20:15.076548",
+            "timestamp": "2025-08-06T15:10:14.172606",
             "action": "elevenlabs_initialized",
             "details": "Using voice ID: 21m00Tcm4TlvDq8ikWAM",
             "component": "elevenlabs_output"
         },
         {
-            "timestamp": "2025-07-31T10:20:15.484667",
+            "timestamp": "2025-08-06T15:10:14.405696",
             "action": "elevenlabs_connected",
             "details": "API connection successful",
             "component": "elevenlabs_output"
         },
         {
-            "timestamp": "2025-07-31T10:20:16.697368",
-            "action": "whisper_initialized",
-            "details": "Whisper model loaded successfully",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-31T10:20:18.773792",
-            "action": "mic_calibrated",
-            "details": "Microphone calibrated for ambient noise",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-31T10:20:18.794922",
-            "action": "jarvis_initialized",
-            "details": "All components loaded successfully",
-            "component": "main"
-        },
-        {
-            "timestamp": "2025-07-31T10:20:18.794963",
-            "action": "task_assigned",
-            "details": "claude is now working on: Jarvis system initialization complete",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-31T10:20:18.796243",
-            "action": "command_parsed",
-            "details": "Processing: what time is it",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-31T10:20:18.796418",
-            "action": "command_executed",
-            "details": "Executed time",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-31T10:20:18.796436",
-            "action": "tts_request",
-            "details": "Speaking: Testing Jarvis voice output...",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:20:22.184261",
-            "action": "tts_success",
-            "details": "Speech played successfully",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:20:27.316686",
-            "action": "todo_added",
-            "details": "Added todo: Test todo item (assigned to system)",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:29.013875",
-            "action": "parser_initialized",
-            "details": "Command parser ready",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:29.045173",
-            "action": "elevenlabs_initialized",
-            "details": "Using voice ID: 21m00Tcm4TlvDq8ikWAM",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:29.255290",
-            "action": "elevenlabs_connected",
-            "details": "API connection successful",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:30.786057",
-            "action": "whisper_initialized",
-            "details": "Whisper model loaded successfully",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:32.907830",
-            "action": "mic_calibrated",
-            "details": "Microphone calibrated for ambient noise",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:32.913990",
-            "action": "jarvis_initialized",
-            "details": "All components loaded successfully",
-            "component": "main"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:32.914027",
-            "action": "task_assigned",
-            "details": "claude is now working on: Jarvis system initialization complete",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:32.915391",
-            "action": "task_assigned",
-            "details": "user is now working on: Interactive text mode",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:32.916427",
-            "action": "command_parsed",
-            "details": "Processing: what time is it",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:32.916641",
-            "action": "command_executed",
-            "details": "Executed time",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:32.916658",
-            "action": "tts_request",
-            "details": "Speaking: The current time is 10:21 AM...",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:36.100215",
-            "action": "tts_success",
-            "details": "Speech played successfully",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:36.100324",
-            "action": "command_parsed",
-            "details": "Processing: help",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:36.102913",
-            "action": "command_executed",
-            "details": "Executed help",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:36.102951",
-            "action": "tts_request",
-            "details": "Speaking: Here are the commands I understand: time - Get cur...",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:43.357823",
-            "action": "listening_stopped",
-            "details": "Voice input stopped",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:43.357885",
-            "action": "playback_stopped",
-            "details": "Audio playback stopped",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:43.357893",
-            "action": "jarvis_shutdown",
-            "details": "System shutdown completed",
-            "component": "main"
-        },
-        {
-            "timestamp": "2025-07-31T10:21:43.357907",
-            "action": "task_assigned",
-            "details": "claude is now working on: None",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-31T10:33:55.707423",
-            "action": "parser_initialized",
-            "details": "Command parser ready",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-31T10:33:55.722330",
-            "action": "elevenlabs_initialized",
-            "details": "Using voice ID: 21m00Tcm4TlvDq8ikWAM",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:33:55.931075",
-            "action": "elevenlabs_connected",
-            "details": "API connection successful",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:33:56.772846",
-            "action": "whisper_initialized",
-            "details": "Whisper model loaded successfully",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-31T10:33:57.857642",
-            "action": "mic_calibrated",
-            "details": "Microphone calibrated for ambient noise",
-            "component": "voice_input"
-        },
-        {
-            "timestamp": "2025-07-31T10:33:57.863258",
-            "action": "jarvis_initialized",
-            "details": "All components loaded successfully",
-            "component": "main"
-        },
-        {
-            "timestamp": "2025-07-31T10:33:57.863290",
-            "action": "task_assigned",
-            "details": "claude is now working on: Jarvis system initialization complete",
-            "component": "system"
-        },
-        {
-            "timestamp": "2025-07-31T10:35:50.267196",
-            "action": "parser_initialized",
-            "details": "Command parser ready",
-            "component": "command_parser"
-        },
-        {
-            "timestamp": "2025-07-31T10:35:50.281782",
-            "action": "elevenlabs_initialized",
-            "details": "Using voice ID: 21m00Tcm4TlvDq8ikWAM",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:35:50.614192",
-            "action": "elevenlabs_connected",
-            "details": "API connection successful",
-            "component": "elevenlabs_output"
-        },
-        {
-            "timestamp": "2025-07-31T10:35:50.991760",
+            "timestamp": "2025-08-06T15:10:14.548919",
             "action": "mic_config_found",
-            "details": "Using config: {'device_index': None}",
+            "details": "Config: {'device_index': None}",
             "component": "voice_input"
         },
         {
-            "timestamp": "2025-07-31T10:35:52.026379",
+            "timestamp": "2025-08-06T15:10:15.068666",
             "action": "whisper_initialized",
-            "details": "Whisper model loaded successfully",
+            "details": "Whisper model loaded",
             "component": "voice_input"
         },
         {
-            "timestamp": "2025-07-31T10:35:53.141478",
+            "timestamp": "2025-08-06T15:10:16.118061",
             "action": "mic_calibrated",
-            "details": "Microphone calibrated for ambient noise",
+            "details": "Microphone calibrated",
             "component": "voice_input"
         },
         {
-            "timestamp": "2025-07-31T10:35:53.151259",
+            "timestamp": "2025-08-06T15:10:16.119029",
             "action": "jarvis_initialized",
             "details": "All components loaded successfully",
             "component": "main"
         },
         {
-            "timestamp": "2025-07-31T10:35:53.151321",
+            "timestamp": "2025-08-06T15:10:16.119036",
             "action": "task_assigned",
             "details": "claude is now working on: Jarvis system initialization complete",
             "component": "system"
         },
         {
-            "timestamp": "2025-07-31T10:35:53.154301",
-            "action": 
+            "timestamp": "2025-08-06T15:10:20.684160",
+            "action": "task_assigned",
+            "details": "user is now working on: Voice control mode",
+            "component": "system"
+        },
+        {
+            "timestamp": "2025-08-06T15:10:20.685842",
+            "action": "tts_request",
+            "details": "Speaking: Hello, how may I help you?...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:10:23.106600",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:10:23.107240",
+            "action": "conversation_started",
+            "details": "Continuous conversation started",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:10:26.254276",
+            "action": "command_received",
+            "details": "What's the price of Bitcoin?",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:10:26.254300",
+            "action": "command_parsed",
+            "details": "Processing: what's the price of bitcoin?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:10:26.255013",
+            "action": "fallback_to_conversation",
+            "details": "No command match, using AI: what's the price of bitcoin?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:10:28.644139",
+            "action": "conversation_response",
+            "details": "Generated AI response",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:10:28.644160",
+            "action": "tts_request",
+            "details": "Speaking: Hello! I'm Jarvis, your intelligent assistant. As ...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:10:59.159425",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:15.400580",
+            "action": "command_received",
+            "details": "My name is Mike.",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:15.400607",
+            "action": "command_parsed",
+            "details": "Processing: my name is mike.",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:15.400641",
+            "action": "fallback_to_conversation",
+            "details": "No command match, using AI: my name is mike.",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:17.922596",
+            "action": "conversation_response",
+            "details": "Generated AI response",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:17.922622",
+            "action": "tts_request",
+            "details": "Speaking: Nice to meet you, Mike! If you have any other ques...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:31.738343",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:38.123986",
+            "action": "command_received",
+            "details": "What's your name?",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:38.124012",
+            "action": "command_parsed",
+            "details": "Processing: what's your name?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:38.124047",
+            "action": "fallback_to_conversation",
+            "details": "No command match, using AI: what's your name?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:39.451304",
+            "action": "conversation_response",
+            "details": "Generated AI response",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:39.451323",
+            "action": "tts_request",
+            "details": "Speaking: I'm Jarvis, your sophisticated AI assistant. Think...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:50.058645",
+            "action": "listening_stopped",
+            "details": "Voice input stopped",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:50.058671",
+            "action": "playback_stopped",
+            "details": "Audio playback stopped",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:50.058673",
+            "action": "jarvis_shutdown",
+            "details": "System shutdown completed",
+            "component": "main"
+        },
+        {
+            "timestamp": "2025-08-06T15:11:50.058678",
+            "action": "task_assigned",
+            "details": "claude is now working on: None",
+            "component": "system"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:04.683522",
+            "action": "parser_initialized",
+            "details": "Command parser ready",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:04.694228",
+            "action": "elevenlabs_initialized",
+            "details": "Using voice ID: 21m00Tcm4TlvDq8ikWAM",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:04.985773",
+            "action": "elevenlabs_connected",
+            "details": "API connection successful",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:05.125382",
+            "action": "mic_config_found",
+            "details": "Config: {'device_index': None}",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:05.581552",
+            "action": "whisper_initialized",
+            "details": "Whisper model loaded",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:06.631593",
+            "action": "mic_calibrated",
+            "details": "Microphone calibrated",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:06.636338",
+            "action": "jarvis_initialized",
+            "details": "All components loaded successfully",
+            "component": "main"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:06.636406",
+            "action": "task_assigned",
+            "details": "claude is now working on: Jarvis system initialization complete",
+            "component": "system"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:06.638391",
+            "action": "task_assigned",
+            "details": "user is now working on: Interactive text mode",
+            "component": "system"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:06.639937",
+            "action": "command_parsed",
+            "details": "Processing: what's the price of bitcoin",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:06.642779",
+            "action": "fallback_to_conversation",
+            "details": "No command match, using AI: what's the price of bitcoin",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:07.854388",
+            "action": "conversation_response",
+            "details": "Generated AI response",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:07.854401",
+            "action": "tts_request",
+            "details": "Speaking: Bitcoin is currently priced at $115,433. By the wa...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:16.235562",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:16.235614",
+            "action": "listening_stopped",
+            "details": "Voice input stopped",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:16.235619",
+            "action": "playback_stopped",
+            "details": "Audio playback stopped",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:16.235621",
+            "action": "jarvis_shutdown",
+            "details": "System shutdown completed",
+            "component": "main"
+        },
+        {
+            "timestamp": "2025-08-06T15:15:16.235626",
+            "action": "task_assigned",
+            "details": "claude is now working on: None",
+            "component": "system"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:17.016190",
+            "action": "parser_initialized",
+            "details": "Command parser ready",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:17.026517",
+            "action": "elevenlabs_initialized",
+            "details": "Using voice ID: Dslrhjl3ZpzrctukrQSN",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:17.242865",
+            "action": "elevenlabs_connected",
+            "details": "API connection successful",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:17.377113",
+            "action": "mic_config_found",
+            "details": "Config: {'device_index': None}",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:17.869808",
+            "action": "whisper_initialized",
+            "details": "Whisper model loaded",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:18.905450",
+            "action": "mic_calibrated",
+            "details": "Microphone calibrated",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:18.908444",
+            "action": "jarvis_initialized",
+            "details": "All components loaded successfully",
+            "component": "main"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:18.908471",
+            "action": "task_assigned",
+            "details": "claude is now working on: Jarvis system initialization complete",
+            "component": "system"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:30.679753",
+            "action": "task_assigned",
+            "details": "user is now working on: Voice control mode",
+            "component": "system"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:30.681870",
+            "action": "tts_request",
+            "details": "Speaking: Hello, I'm Jarvis. How may I help you?...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:36.091852",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:36.092422",
+            "action": "conversation_started",
+            "details": "Continuous conversation started",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:41.954571",
+            "action": "command_received",
+            "details": "What's the news in Lila, North Carolina?",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:41.954595",
+            "action": "command_parsed",
+            "details": "Processing: what's the news in lila, north carolina?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:41.955293",
+            "action": "fallback_to_conversation",
+            "details": "No command match, using AI: what's the news in lila, north carolina?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:46.822567",
+            "action": "conversation_response",
+            "details": "Generated AI response",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:16:46.822589",
+            "action": "tts_request",
+            "details": "Speaking: I don't have access to specific local news for Lil...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:30.869335",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:36.652148",
+            "action": "command_received",
+            "details": "I'd like to know what the weather is in Wilmington, North Carolina.",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:36.652173",
+            "action": "command_parsed",
+            "details": "Processing: i'd like to know what the weather is in wilmington, north carolina.",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:36.652214",
+            "action": "fallback_to_conversation",
+            "details": "No command match, using AI: i'd like to know what the weather is in wilmington, north carolina.",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:37.890492",
+            "action": "conversation_response",
+            "details": "Generated AI response",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:37.890515",
+            "action": "tts_request",
+            "details": "Speaking: The current weather in Wilmington, North Carolina,...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:48.033333",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:51.843434",
+            "action": "command_received",
+            "details": "Are you sure about that?",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:51.843456",
+            "action": "command_parsed",
+            "details": "Processing: are you sure about that?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:51.843489",
+            "action": "fallback_to_conversation",
+            "details": "No command match, using AI: are you sure about that?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:53.065371",
+            "action": "conversation_response",
+            "details": "Generated AI response",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:17:53.065391",
+            "action": "tts_request",
+            "details": "Speaking: I apologize for the confusion. It seems I misspoke...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:05.298280",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:18.948564",
+            "action": "command_received",
+            "details": "What's the weather in Wilmington with Carolina?",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:18.948585",
+            "action": "command_parsed",
+            "details": "Processing: what's the weather in wilmington with carolina?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:18.948622",
+            "action": "fallback_to_conversation",
+            "details": "No command match, using AI: what's the weather in wilmington with carolina?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:20.337888",
+            "action": "conversation_response",
+            "details": "Generated AI response",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:20.337912",
+            "action": "tts_request",
+            "details": "Speaking: The current weather in Wilmington, North Carolina,...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:30.667208",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:34.281392",
+            "action": "command_received",
+            "details": "What's my name?",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:34.281424",
+            "action": "command_parsed",
+            "details": "Processing: what's my name?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:34.281471",
+            "action": "fallback_to_conversation",
+            "details": "No command match, using AI: what's my name?",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:35.706266",
+            "action": "conversation_response",
+            "details": "Generated AI response",
+            "component": "command_parser"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:35.706284",
+            "action": "tts_request",
+            "details": "Speaking: Your name is Is. How can I assist you further toda...",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:39.320431",
+            "action": "tts_success",
+            "details": "Speech played successfully",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:41.064011",
+            "action": "listening_stopped",
+            "details": "Voice input stopped",
+            "component": "voice_input"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:41.064034",
+            "action": "playback_stopped",
+            "details": "Audio playback stopped",
+            "component": "elevenlabs_output"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:41.064036",
+            "action": "jarvis_shutdown",
+            "details": "System shutdown completed",
+            "component": "main"
+        },
+        {
+            "timestamp": "2025-08-06T15:18:41.064041",
+            "action": "task_assigned",
+            "details": "claude is now working on: None",
+            "component": "system"
+        }
+    ],
+    "current_task": {
+        "claude": null,
+        "gemini": null,
+        "user": "Voice control mode"
+    },
+    "metadata": {
+        "created": "2025-08-05T12:18:22.933466",
+        "last_updated": "2025-08-06T15:18:41.064042",
+        "version": "1.0.0"
+    }
+}

@@ -17,10 +17,17 @@ import threading
 import time
 import tempfile
 import os
+import warnings
+from contextlib import redirect_stderr
 from typing import Optional, Callable
 from faster_whisper import WhisperModel
 from config import config
-from jarvis_state import jarvis_state
+from memory.state_manager import jarvis_state
+
+# Suppress audio warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+os.environ['ALSA_PCM_CARD'] = '0'
+os.environ['ALSA_PCM_DEVICE'] = '0'
 
 
 class VoiceInput:
@@ -189,7 +196,7 @@ class VoiceInput:
                 jarvis_state.log_action("wake_word_error", str(e), "voice_input")
                 time.sleep(1)
     
-    def listen_for_command(self, timeout: int = 5) -> Optional[str]:
+    def listen_for_command(self, timeout: int = 10) -> Optional[str]:
         """
         Listen for a voice command after wake word detection.
         
@@ -206,13 +213,16 @@ class VoiceInput:
             print("🎤 Ready to listen for command...")
             print(f"💬 Speak clearly within {timeout} seconds!")
             
-            with self.microphone as source:
-                # Quick recalibration for command listening
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
-                
-                print("🔴 Listening now...")
-                audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=8)
-                print("✅ Audio captured, processing...")
+            # Suppress ALSA warnings during audio capture
+            from suppress_console_errors import suppress_audio_stderr
+            with suppress_audio_stderr():
+                with self.microphone as source:
+                    # Quick recalibration for command listening
+                    self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
+                    
+                    print("🔴 Listening now...")
+                    audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=8)
+                    print("✅ Audio captured, processing...")
             
             # Use more accurate recognition for commands
             text = self._recognize_speech(audio, quick=False)
@@ -321,6 +331,60 @@ class VoiceInput:
             )
             self.listening_thread.start()
             jarvis_state.log_action("listening_started", "Voice input thread started", "voice_input")
+    
+    def start_conversation_async(self, callback: Callable[[str], None]):
+        """
+        Start continuous conversation mode without wake words.
+        
+        Args:
+            callback: Function to call with recognized commands
+        """
+        if not self.is_listening:
+            self.listening_thread = threading.Thread(
+                target=self.continuous_conversation, 
+                args=(callback,),
+                daemon=True
+            )
+            self.listening_thread.start()
+            jarvis_state.log_action("conversation_started", "Continuous conversation started", "voice_input")
+    
+    def continuous_conversation(self, callback: Callable[[str], None]):
+        """
+        Continuous conversation loop without wake words.
+        
+        Args:
+            callback: Function to call with recognized commands
+        """
+        self.is_listening = True
+        print("🎤 Continuous conversation mode active")
+        
+        while self.is_listening:
+            try:
+                print("🔴 Listening for command...")
+                
+                # Listen for command directly
+                command = self.listen_for_command(timeout=10)
+                
+                if command:
+                    # Check for stop commands
+                    if any(stop in command.lower() for stop in ["goodbye", "stop", "quit", "exit"]):
+                        print("👋 Conversation ending...")
+                        callback(command)  # Let main handle shutdown
+                        break
+                    
+                    # Process normal command
+                    callback(command)
+                    
+                    # Brief pause
+                    time.sleep(0.5)
+                else:
+                    # No command detected, continue listening
+                    print("❓ No command detected. Continuing to listen...")
+                    time.sleep(1)
+                    
+            except Exception as e:
+                print(f"Conversation error: {e}")
+                time.sleep(1)
     
     def stop_listening(self):
         """Stop the listening loop and clean up resources."""

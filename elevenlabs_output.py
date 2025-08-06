@@ -21,7 +21,7 @@ import pygame
 import requests
 from pathlib import Path
 from config import config
-from jarvis_state import jarvis_state
+from memory.state_manager import jarvis_state
 
 class ElevenLabsOutput:
     """
@@ -218,7 +218,11 @@ class ElevenLabsOutput:
             if response.status_code == 200:
                 return response.content
             else:
-                print(f"ElevenLabs API error: {response.status_code} - {response.text}")
+                # Handle quota exceeded more gracefully
+                if response.status_code == 401 and "quota_exceeded" in response.text:
+                    print("⚠️  ElevenLabs voice quota exceeded - continuing without voice output")
+                else:
+                    print(f"ElevenLabs API error: {response.status_code} - {response.text}")
                 return None
                 
         except requests.exceptions.Timeout:

@@ -22,6 +22,7 @@ Usage:
     python main.py           # Interactive mode selection
 """
 
+import os
 import sys
 import time
 import signal
@@ -29,11 +30,23 @@ import threading
 from typing import Optional
 from pathlib import Path
 
+# Suppress console errors BEFORE any imports
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+os.environ['ALSA_PCM_CARD'] = '0' 
+os.environ['ALSA_PCM_DEVICE'] = '0'
+os.environ['ANONYMIZED_TELEMETRY'] = 'False'
+
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='pygame')
+warnings.filterwarnings('ignore', category=DeprecationWarning, module='pkg_resources')
+warnings.filterwarnings('ignore', message='.*telemetry.*')
+
 # Import Jarvis modules
 from voice_input import VoiceInput
 from command_parser import CommandParser
 from elevenlabs_output import ElevenLabsOutput
-from jarvis_state import jarvis_state
+from memory.state_manager import jarvis_state
+from memory.chroma_manager import chroma_manager
 from config import config
 
 class JarvisAssistant:
@@ -162,21 +175,22 @@ class JarvisAssistant:
             return
         
         print("🎤 Starting Jarvis in Voice Mode")
-        print(f"   Say '{config.get('general', 'wake_word', 'jarvis')}' followed by your command")
-        print("   Press Ctrl+C to stop")
+        print("   Speak your commands directly - no wake word needed")
+        print("   Say 'goodbye' to stop")
         print("-" * 50)
         
         self.is_running = True
         jarvis_state.set_current_task("user", "Voice control mode")
         
-        # Speak greeting
+        # Speak proper greeting
         if self.voice_output:
-            greeting = f"Hello! Jarvis is ready. Say {config.get('general', 'wake_word', 'jarvis')} followed by your command."
+            greeting = "Hello, I'm Jarvis. How may I help you?"
+            print(f"🤖 Jarvis: {greeting}")
             self.voice_output.speak(greeting)
         
         try:
-            # Start voice input in async mode
-            self.voice_input.start_listening_async(self._handle_voice_command)
+            # Start voice input in conversation mode (no wake word needed)
+            self.voice_input.start_conversation_async(self._handle_voice_command)
             
             # Keep main thread alive
             while self.is_running:

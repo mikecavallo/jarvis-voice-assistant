@@ -1,6 +1,6 @@
 # Voice Input
 SpeechRecognition==3.10.0
-pyaudio==0.2.11
+# pyaudio==0.2.11  # Requires system PortAudio dev headers - install manually if needed
 faster-whisper==0.10.0
 
 # Voice Output 
@@ -9,6 +9,18 @@ pygame==2.5.2
 
 # System Integration
 pyautogui==0.9.54
+
+# MCP Server and API Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+aiohttp==3.9.1
+pydantic==2.5.0
+
+# Memory Management
+chromadb==0.4.18
+langchain>=0.0.348
+langchain-community>=0.0.38
+langchain-experimental>=0.0.45
 
 # Utilities
 requests==2.31.0
