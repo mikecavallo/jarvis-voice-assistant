@@ -1,55 +1,38 @@
-# Python
+# Environment variables (contains sensitive data)
+.env
+
+# API Keys and secrets
+config.json
+
+# Virtual environment
+jarvis_env/
+venv/
+env/
+
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
 
-# Virtual environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+# Personal memory (may contain user data)
+memory/personal_memory.json
+memory/chroma_db/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# State files (may contain session data)
+jarvis_state.json
 
-# OS
+# Logs
+logs/
+*.log
+
+# OS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Project specific
-config.json
-*.wav
-*.mp3
-logs/
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
 temp/

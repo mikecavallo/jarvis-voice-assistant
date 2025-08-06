@@ -8,6 +8,7 @@ and execute various tools like weather, crypto, news, search, etc.
 import aiohttp
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
@@ -128,7 +129,10 @@ class MCPClient:
             
             # Add API key for tools that require auth
             if tool.requires_auth:
-                headers["Authorization"] = "Bearer jarvis-mcp-key-2025"
+                api_key = os.getenv("MCP_API_KEY")
+                if not api_key:
+                    raise ValueError("MCP_API_KEY environment variable not set")
+                headers["Authorization"] = f"Bearer {api_key}"
             
             # Make request
             async with session.get(url, params=kwargs, headers=headers) as response:

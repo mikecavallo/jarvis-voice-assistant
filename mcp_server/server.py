@@ -12,7 +12,7 @@ The server provides:
 - Health monitoring and diagnostics
 """
 
-from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi import FastAPI, Depends, HTTPException, Security, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -35,6 +35,9 @@ from .tools.calendar import CalendarTool
 from .tools.filesystem import FilesystemTool
 from .tools.system import SystemTool
 
+# Import security utilities
+from .security import RateLimiter, InputValidator, SecurityHeaders, hash_api_key, PARAMETER_SCHEMAS
+
 logger = logging.getLogger(__name__)
 
 # FastAPI app instance
@@ -44,17 +47,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware
+# CORS middleware - restrict to specific origins in production
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Security
 security = HTTPBearer()
+rate_limiter = RateLimiter(max_requests=int(os.getenv("RATE_LIMIT_PER_MINUTE", "60")), window_minutes=1)
 
 # Pydantic models for API schemas
 class MCPRequest(BaseModel):
@@ -91,27 +96,62 @@ tools = {
     "system": SystemTool()
 }
 
-def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(security)):
+def get_client_ip(request: Request) -> str:
+    """Extract client IP address from request."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+def verify_api_key_and_rate_limit(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Security(security)
+):
     """
-    Verify API key authentication.
+    Verify API key authentication and check rate limits.
     
     Args:
+        request: FastAPI request object
         credentials: Bearer token credentials
         
     Returns:
         True if valid, raises HTTPException if invalid
     """
-    expected_key = os.getenv("MCP_API_KEY", "jarvis-mcp-key-2025")
+    # Check rate limiting first
+    client_ip = get_client_ip(request)
+    if not rate_limiter.is_allowed(client_ip):
+        reset_time = rate_limiter.get_reset_time(client_ip)
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded",
+            headers={"Retry-After": str(int((reset_time - datetime.now()).total_seconds()))} if reset_time else {}
+        )
+    
+    # Verify API key
+    expected_key = os.getenv("MCP_API_KEY")
+    if not expected_key:
+        logger.error("MCP_API_KEY environment variable not configured")
+        raise HTTPException(
+            status_code=500,
+            detail="Server configuration error"
+        )
     
     if credentials.credentials != expected_key:
+        logger.warning(f"Invalid API key attempt from IP: {client_ip}, key hash: {hash_api_key(credentials.credentials)}")
         raise HTTPException(
             status_code=401,
             detail="Invalid API key"
         )
+    
+    logger.info(f"Authenticated request from IP: {client_ip}")
     return True
 
 @app.get("/health", response_model=HealthResponse)
-async def health_check():
+async def health_check(response: Response):
+    """Health check endpoint with security headers."""
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
     """
     Health check endpoint for monitoring server status.
     
@@ -136,8 +176,10 @@ async def health_check():
 
 @app.post("/mcp", response_model=MCPResponse)
 async def mcp_endpoint(
-    request: MCPRequest,
-    authorized: bool = Depends(verify_api_key)
+    mcp_request: MCPRequest,
+    request: Request,
+    response: Response,
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
     """
     Main MCP endpoint for tool execution.
@@ -150,24 +192,39 @@ async def mcp_endpoint(
         MCP response with results or error information
     """
     try:
+        # Add security headers
+        for header, value in SecurityHeaders.get_headers().items():
+            response.headers[header] = value
+        
         # Validate tool exists
-        if request.tool not in tools:
+        if mcp_request.tool not in tools:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unknown tool: {request.tool}"
+                detail=f"Unknown tool: {mcp_request.tool}"
             )
         
-        tool = tools[request.tool]
+        tool = tools[mcp_request.tool]
+        
+        # Validate parameters if schema exists
+        if mcp_request.tool in PARAMETER_SCHEMAS:
+            try:
+                validated_params = InputValidator.validate_parameters(
+                    mcp_request.parameters, 
+                    PARAMETER_SCHEMAS[mcp_request.tool]
+                )
+                mcp_request.parameters = validated_params
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=f"Parameter validation failed: {str(e)}")
         
         # Execute tool action
-        result = await tool.execute(request.action, request.parameters)
+        result = await tool.execute(mcp_request.action, mcp_request.parameters)
         
         return MCPResponse(
             success=True,
             data=result,
             metadata={
-                "tool": request.tool,
-                "action": request.action,
+                "tool": mcp_request.tool,
+                "action": mcp_request.action,
                 "execution_time": datetime.now().isoformat()
             },
             timestamp=datetime.now().isoformat()
@@ -181,8 +238,8 @@ async def mcp_endpoint(
             success=False,
             error=str(e),
             metadata={
-                "tool": request.tool,
-                "action": request.action,
+                "tool": mcp_request.tool,
+                "action": mcp_request.action,
                 "error_time": datetime.now().isoformat()
             },
             timestamp=datetime.now().isoformat()
@@ -193,62 +250,134 @@ async def mcp_endpoint(
 async def search_endpoint(
     q: str,
     num_results: int = 5,
-    authorized: bool = Depends(verify_api_key)
+    request: Request,
+    response: Response,
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
-    """Web search endpoint."""
-    return await tools["search"].execute("search", {"query": q, "num_results": num_results})
+    """Web search endpoint with input validation."""
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
+    
+    # Validate parameters
+    try:
+        params = InputValidator.validate_parameters(
+            {"query": q, "num_results": num_results},
+            PARAMETER_SCHEMAS["search"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Parameter validation failed: {str(e)}")
+    
+    return await tools["search"].execute("search", params)
 
 @app.get("/weather")
 async def weather_endpoint(
     location: str,
     forecast: str = "false",
-    authorized: bool = Depends(verify_api_key)
+    request: Request,
+    response: Response,
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
-    """Weather information endpoint."""
+    """Weather information endpoint with input validation."""
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
+    
+    # Validate parameters
+    try:
+        params = InputValidator.validate_parameters(
+            {"location": location, "forecast": forecast},
+            PARAMETER_SCHEMAS["weather"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Parameter validation failed: {str(e)}")
+    
     # Convert string to boolean
-    forecast_bool = forecast.lower() in ("true", "1", "yes", "on")
+    forecast_bool = params["forecast"].lower() in ("true", "1", "yes", "on")
     action = "forecast" if forecast_bool else "current"
-    return await tools["weather"].execute(action, {"location": location})
+    return await tools["weather"].execute(action, {"location": params["location"]})
 
 @app.get("/crypto")
 async def crypto_endpoint(
     symbol: str,
     vs_currency: str = "usd",
-    authorized: bool = Depends(verify_api_key)
+    request: Request,
+    response: Response,
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
-    """Cryptocurrency price endpoint."""
-    return await tools["crypto"].execute("price", {"symbol": symbol, "vs_currency": vs_currency})
+    """Cryptocurrency price endpoint with input validation."""
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
+    
+    # Validate parameters
+    try:
+        params = InputValidator.validate_parameters(
+            {"symbol": symbol, "vs_currency": vs_currency},
+            PARAMETER_SCHEMAS["crypto"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Parameter validation failed: {str(e)}")
+    
+    return await tools["crypto"].execute("price", params)
 
 @app.get("/news")
 async def news_endpoint(
     category: str = "general",
     country: str = "us",
     page_size: int = 10,
-    authorized: bool = Depends(verify_api_key)
+    request: Request,
+    response: Response,
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
-    """News headlines endpoint."""
-    return await tools["news"].execute("headlines", {
-        "category": category,
-        "country": country,
-        "page_size": page_size
-    })
+    """News headlines endpoint with input validation."""
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
+    
+    # Validate parameters
+    try:
+        params = InputValidator.validate_parameters(
+            {"category": category, "country": country, "page_size": page_size},
+            PARAMETER_SCHEMAS["news"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Parameter validation failed: {str(e)}")
+    
+    return await tools["news"].execute("headlines", params)
 
 @app.post("/gmail")
 async def gmail_endpoint(
     action: str,
     parameters: Dict[str, Any],
-    authorized: bool = Depends(verify_api_key)
+    request: Request,
+    response: Response,
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
-    """Gmail operations endpoint."""
+    """Gmail operations endpoint with security."""
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
+    
+    # Basic input validation
+    action = InputValidator.sanitize_string(action, 50)
     return await tools["email"].execute(action, parameters)
 
 @app.post("/calendar")
 async def calendar_endpoint(
     action: str,
     parameters: Dict[str, Any],
-    authorized: bool = Depends(verify_api_key)
+    request: Request,
+    response: Response,
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
-    """Google Calendar operations endpoint.""" 
+    """Google Calendar operations endpoint with security.""" 
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
+    
+    # Basic input validation
+    action = InputValidator.sanitize_string(action, 50)
     return await tools["calendar"].execute(action, parameters)
 
 class FilesystemRequest(BaseModel):
@@ -258,21 +387,41 @@ class FilesystemRequest(BaseModel):
 @app.post("/fs/{path:path}")
 async def filesystem_endpoint(
     path: str,
-    request: FilesystemRequest,
-    authorized: bool = Depends(verify_api_key)
+    fs_request: FilesystemRequest,
+    request: Request,
+    response: Response,
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
-    """Filesystem operations endpoint."""
-    request.parameters["path"] = path
-    return await tools["filesystem"].execute(request.action, request.parameters)
+    """Filesystem operations endpoint with security."""
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
+    
+    # Input validation
+    path = InputValidator.sanitize_string(path, 500)
+    action = InputValidator.sanitize_string(fs_request.action, 50)
+    
+    fs_request.parameters["path"] = path
+    return await tools["filesystem"].execute(action, fs_request.parameters)
 
 @app.post("/system/{command}")
 async def system_endpoint(
     command: str,
+    request: Request,
+    response: Response,
     parameters: Dict[str, Any] = {},
-    authorized: bool = Depends(verify_api_key)
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
-    """System control endpoint."""
+    """System control endpoint with security."""
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
+    
+    # Input validation
+    command = InputValidator.sanitize_string(command, 50)
     parameters["command"] = command
+    
+    logger.warning(f"System command requested: {command} from IP: {get_client_ip(request)}")
     return await tools["system"].execute("run", parameters)
 
 if __name__ == "__main__":

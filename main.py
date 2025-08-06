@@ -47,6 +47,7 @@ from command_parser import CommandParser
 from elevenlabs_output import ElevenLabsOutput
 from memory.state_manager import jarvis_state
 from memory.chroma_manager import chroma_manager
+from memory.conversation_manager import conversation_manager
 from config import config
 
 class JarvisAssistant:
@@ -182,9 +183,9 @@ class JarvisAssistant:
         self.is_running = True
         jarvis_state.set_current_task("user", "Voice control mode")
         
-        # Speak proper greeting
+        # Speak personalized greeting based on memory
         if self.voice_output:
-            greeting = "Hello, I'm Jarvis. How may I help you?"
+            greeting = conversation_manager.get_greeting()
             print(f"🤖 Jarvis: {greeting}")
             self.voice_output.speak(greeting)
         

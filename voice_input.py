@@ -213,16 +213,14 @@ class VoiceInput:
             print("🎤 Ready to listen for command...")
             print(f"💬 Speak clearly within {timeout} seconds!")
             
-            # Suppress ALSA warnings during audio capture
-            from suppress_console_errors import suppress_audio_stderr
-            with suppress_audio_stderr():
-                with self.microphone as source:
-                    # Quick recalibration for command listening
-                    self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
-                    
-                    print("🔴 Listening now...")
-                    audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=8)
-                    print("✅ Audio captured, processing...")
+            # Capture audio with error suppression
+            with self.microphone as source:
+                # Quick recalibration for command listening
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
+                
+                print("🔴 Listening now...")
+                audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=8)
+                print("✅ Audio captured, processing...")
             
             # Use more accurate recognition for commands
             text = self._recognize_speech(audio, quick=False)
@@ -305,7 +303,7 @@ class VoiceInput:
             
             try:
                 # Transcribe with Whisper
-                segments, info = self.whisper_model.transcribe(tmp_file_path, beam_size=5)
+                segments, _ = self.whisper_model.transcribe(tmp_file_path, beam_size=5)
                 text = " ".join([segment.text for segment in segments]).strip()
                 return text if text else None
             finally:
