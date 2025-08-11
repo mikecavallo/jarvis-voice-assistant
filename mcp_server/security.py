@@ -29,26 +29,28 @@ class RateLimiter:
         self.window_seconds = window_minutes * 60
         self.requests = defaultdict(deque)
     
-    def is_allowed(self, client_ip: str) -> bool:
+    def is_allowed(self, client_ip: str, max_requests: Optional[int] = None) -> bool:
         """
         Check if request is allowed for client IP.
         
         Args:
             client_ip: Client IP address
+            max_requests: Override default max_requests for this check
             
         Returns:
             True if request is allowed, False if rate limited
         """
         now = time.time()
         client_requests = self.requests[client_ip]
+        limit = max_requests if max_requests is not None else self.max_requests
         
         # Remove old requests outside the window
         while client_requests and client_requests[0] < now - self.window_seconds:
             client_requests.popleft()
         
         # Check if under rate limit
-        if len(client_requests) >= self.max_requests:
-            logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+        if len(client_requests) >= limit:
+            logger.warning(f"Rate limit exceeded for IP: {client_ip} (limit: {limit})")
             return False
         
         # Add current request

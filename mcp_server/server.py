@@ -34,6 +34,8 @@ from .tools.email import EmailTool
 from .tools.calendar import CalendarTool
 from .tools.filesystem import FilesystemTool
 from .tools.system import SystemTool
+from .tools.google_calendar import GoogleCalendarTool
+from .tools.gmail import GmailTool
 
 # Import security utilities
 from .security import RateLimiter, InputValidator, SecurityHeaders, hash_api_key, PARAMETER_SCHEMAS
@@ -93,7 +95,9 @@ tools = {
     "email": EmailTool(),
     "calendar": CalendarTool(),
     "filesystem": FilesystemTool(),
-    "system": SystemTool()
+    "system": SystemTool(),
+    "google_calendar": GoogleCalendarTool(),
+    "gmail": GmailTool()
 }
 
 def get_client_ip(request: Request) -> str:
@@ -249,9 +253,9 @@ async def mcp_endpoint(
 @app.get("/search")
 async def search_endpoint(
     q: str,
-    num_results: int = 5,
     request: Request,
     response: Response,
+    num_results: int = 5,
     authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
     """Web search endpoint with input validation."""
@@ -273,9 +277,9 @@ async def search_endpoint(
 @app.get("/weather")
 async def weather_endpoint(
     location: str,
-    forecast: str = "false",
     request: Request,
     response: Response,
+    forecast: str = "false",
     authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
     """Weather information endpoint with input validation."""
@@ -300,9 +304,9 @@ async def weather_endpoint(
 @app.get("/crypto")
 async def crypto_endpoint(
     symbol: str,
-    vs_currency: str = "usd",
     request: Request,
     response: Response,
+    vs_currency: str = "usd",
     authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
     """Cryptocurrency price endpoint with input validation."""
@@ -323,11 +327,11 @@ async def crypto_endpoint(
 
 @app.get("/news")
 async def news_endpoint(
+    request: Request,
+    response: Response,
     category: str = "general",
     country: str = "us",
     page_size: int = 10,
-    request: Request,
-    response: Response,
     authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
     """News headlines endpoint with input validation."""
@@ -354,14 +358,23 @@ async def gmail_endpoint(
     response: Response,
     authorized: bool = Depends(verify_api_key_and_rate_limit)
 ):
-    """Gmail operations endpoint with security."""
+    """Gmail integration endpoint with OAuth2 authentication and AI features."""
     # Add security headers
     for header, value in SecurityHeaders.get_headers().items():
         response.headers[header] = value
     
-    # Basic input validation
+    # Input validation
     action = InputValidator.sanitize_string(action, 50)
-    return await tools["email"].execute(action, parameters)
+    
+    # Rate limiting for Google APIs (more restrictive)
+    client_ip = get_client_ip(request)
+    if not rate_limiter.is_allowed(client_ip, max_requests=30):  # 30 requests per minute for Google APIs
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded for Gmail API"
+        )
+    
+    return await tools["gmail"].execute(action, parameters)
 
 @app.post("/calendar")
 async def calendar_endpoint(
@@ -379,6 +392,32 @@ async def calendar_endpoint(
     # Basic input validation
     action = InputValidator.sanitize_string(action, 50)
     return await tools["calendar"].execute(action, parameters)
+
+@app.post("/google_calendar")
+async def google_calendar_endpoint(
+    action: str,
+    parameters: Dict[str, Any],
+    request: Request,
+    response: Response,
+    authorized: bool = Depends(verify_api_key_and_rate_limit)
+):
+    """Google Calendar integration endpoint with OAuth2 authentication."""
+    # Add security headers
+    for header, value in SecurityHeaders.get_headers().items():
+        response.headers[header] = value
+    
+    # Input validation
+    action = InputValidator.sanitize_string(action, 50)
+    
+    # Rate limiting for Google APIs (more restrictive)
+    client_ip = get_client_ip(request)
+    if not rate_limiter.is_allowed(client_ip, max_requests=30):  # 30 requests per minute for Google APIs
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded for Google Calendar API"
+        )
+    
+    return await tools["google_calendar"].execute(action, parameters)
 
 class FilesystemRequest(BaseModel):
     action: str
@@ -409,8 +448,8 @@ async def system_endpoint(
     command: str,
     request: Request,
     response: Response,
-    parameters: Dict[str, Any] = {},
-    authorized: bool = Depends(verify_api_key_and_rate_limit)
+    authorized: bool = Depends(verify_api_key_and_rate_limit),
+    parameters: Dict[str, Any] = {}
 ):
     """System control endpoint with security."""
     # Add security headers

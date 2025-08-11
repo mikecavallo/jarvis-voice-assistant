@@ -35,6 +35,53 @@ class ConversationManager:
         
         logger.info(f"Conversation manager initialized for session: {self.session_id}")
     
+    def _search_conversation_history(self, query: str, limit: int = 5) -> str:
+        """
+        Search past conversations for relevant context.
+        
+        Args:
+            query: User's question or search terms
+            limit: Maximum number of results to return
+            
+        Returns:
+            Formatted conversation history or empty string
+        """
+        if not chroma_manager.enabled:
+            return ""
+        
+        try:
+            # Search for relevant past conversations
+            results = chroma_manager.search_conversations(query, n_results=limit)
+            
+            if not results:
+                return ""
+            
+            # Format results as context with priority information
+            context_parts = []
+            for i, result in enumerate(results):
+                # Extract conversation content
+                content = result.get('document', result.get('text', ''))
+                distance = result.get('distance', 0)
+                priority = result.get('priority', 0)
+                
+                # Skip if too distant (not relevant enough)
+                if distance and distance > 0.8:
+                    continue
+                
+                # Debug: show priority scores
+                print(f"🔍 DEBUG: Memory {i+1} - Priority: {priority:.3f}, Distance: {distance:.3f if distance else 'N/A'}")
+                
+                context_parts.append(f"Past conversation {i+1}: {content}")
+            
+            if context_parts:
+                return f"RELEVANT PAST CONVERSATIONS:\n" + "\n".join(context_parts[:3])  # Limit to 3 most relevant
+            
+            return ""
+            
+        except Exception as e:
+            logger.error(f"Error searching conversation history: {e}")
+            return ""
+    
     def _get_base_system_prompt(self) -> str:
         """Get the base Jarvis personality system prompt."""
         available_tools = mcp_client.get_available_tools()
@@ -160,6 +207,19 @@ Keep responses brief and natural.
             if not llm_manager.is_available():
                 return "I'm sorry, but my conversational AI system is currently unavailable. I can still help with basic commands - say 'help' to see what's available."
             
+            # Check if user is asking about past conversations/memory
+            memory_keywords = ["yesterday", "before", "previous", "earlier", "last time", "remember", "talked about", "discussed", "conversation", "what did we", "what have we"]
+            is_memory_query = any(keyword in user_input.lower() for keyword in memory_keywords)
+            
+            conversation_context = ""
+            if is_memory_query:
+                print(f"🔍 DEBUG: Memory query detected: {user_input}")
+                conversation_context = self._search_conversation_history(user_input)
+                if conversation_context:
+                    print(f"🔍 DEBUG: Found relevant conversations: {len(conversation_context)} chars")
+                else:
+                    print("🔍 DEBUG: No relevant conversations found")
+            
             # Step 1: Intelligent routing - check if MCP tools should be used
             tool_needed = mcp_client.can_handle_request(user_input)
             tool_results = None
@@ -183,6 +243,11 @@ Keep responses brief and natural.
             # Add any additional context
             if context:
                 system_content += f"\nCURRENT CONTEXT:\n{context.get('info', '')}\n"
+            
+            # Add conversation history context if this is a memory query
+            if conversation_context:
+                system_content += f"\n{conversation_context}\n"
+                system_content += "\nUSE THIS INFORMATION: The user is asking about past conversations. Use the relevant past conversations above to answer their question accurately.\n"
             
             # Step 3: Build message list
             messages = [ChatMessage(role="system", content=system_content)]
@@ -283,6 +348,54 @@ Keep responses brief and natural.
                     return self._format_filesystem_result(result["data"])
                 else:
                     return f"I couldn't access the file system: {result.get('error', 'Unknown error')}"
+            
+            elif tool_name == "calendar":
+                # Extract calendar action and parameters
+                action, params = self._extract_calendar_request(user_input)
+                print(f"🔍 DEBUG: Calendar action: {action}")
+                print(f"🔍 DEBUG: Calendar params: {params}")
+                
+                # Validate required information for create_event
+                if action == "create_event":
+                    missing_info = []
+                    
+                    # Check for event title/summary
+                    if not params.get("summary") or params.get("summary") == "New Event":
+                        missing_info.append("what the appointment is for")
+                    
+                    # Check for specific time (if still using defaults)
+                    if "10:00" in params.get("start_time", "") and "10:00" not in user_input.lower():
+                        missing_info.append("what time")
+                    
+                    # Check for specific date (if still using today as default and no date mentioned)
+                    today_str = datetime.now().strftime("%Y-%m-%d")
+                    if today_str in params.get("start_time", "") and not any(word in user_input.lower() for word in ["today", "tomorrow", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]):
+                        missing_info.append("what day")
+                    
+                    if missing_info:
+                        missing_str = ", ".join(missing_info[:-1])
+                        if len(missing_info) > 1:
+                            missing_str += f" and {missing_info[-1]}"
+                        else:
+                            missing_str = missing_info[0]
+                        
+                        return f"I'd be happy to add that appointment! Could you please tell me {missing_str}?"
+                
+                result = await mcp_client.call_tool("calendar", action=action, parameters=params)
+                print(f"🔍 DEBUG: Calendar result: {result}")
+                if result.get("success"):
+                    return self._format_calendar_result(result["data"])
+                else:
+                    return f"I couldn't access your calendar right now: {result.get('error', 'Calendar integration needs setup')}"
+            
+            elif tool_name == "gmail":
+                # Extract email action
+                action, details = self._extract_gmail_request(user_input)
+                result = await mcp_client.call_tool("gmail", action=action, details=details)
+                if result.get("success"):
+                    return self._format_gmail_result(result["data"])
+                else:
+                    return f"I couldn't access your Gmail right now: {result.get('error', 'Gmail integration needs setup')}"
             
             return None
             
@@ -458,6 +571,318 @@ Keep responses brief and natural.
         except:
             return str(data)
     
+    def _extract_calendar_request(self, user_input: str) -> tuple[str, Dict[str, str]]:
+        """Extract calendar action and parameters from user input."""
+        user_lower = user_input.lower()
+        
+        # Extract action with more specific detection
+        print(f"🔍 DEBUG: Determining action for: '{user_lower}'")
+        
+        if any(word in user_lower for word in ["add", "create", "schedule", "book", "make an appointment", "appointment"]):
+            action = "create_event"
+        elif any(word in user_lower for word in ["update", "change", "modify", "move", "reschedule", "fix"]):
+            action = "update_event"
+        elif any(word in user_lower for word in ["delete", "remove", "cancel"]):
+            action = "delete_event"
+        elif any(phrase in user_lower for phrase in ["what's on", "what's in", "check calendar", "show me"]) and not any(word in user_lower for word in ["add", "create", "schedule", "book"]):
+            action = "list_events"
+        elif "free time" in user_lower or "available" in user_lower:
+            action = "find_free_time"
+        else:
+            # Default to create_event if it mentions appointment/meeting/event
+            if any(word in user_lower for word in ["appointment", "meeting", "event"]):
+                action = "create_event"
+            else:
+                action = "list_events"
+        
+        print(f"🔍 DEBUG: Action determined: {action}")
+        
+        # Extract date info with proper datetime conversion
+        import re
+        from datetime import datetime, timedelta
+        import pytz
+        
+        date_patterns = [
+            r"august (\d+)",
+            r"september (\d+)", 
+            r"today",
+            r"tomorrow",
+            r"next week",
+            r"this week",
+            r"monday",
+            r"tuesday", 
+            r"wednesday",
+            r"thursday",
+            r"friday",
+            r"saturday",
+            r"sunday"
+        ]
+        
+        date_info = None  # Will be set to actual date
+        now = datetime.now()
+        
+        for pattern in date_patterns:
+            match = re.search(pattern, user_lower)
+            if match:
+                if "august" in pattern:
+                    date_info = f"2025-08-{match.group(1).zfill(2)}"
+                elif "september" in pattern:
+                    date_info = f"2025-09-{match.group(1).zfill(2)}"
+                elif "today" in pattern:
+                    date_info = now.strftime("%Y-%m-%d")
+                elif "tomorrow" in pattern:
+                    tomorrow = now + timedelta(days=1)
+                    date_info = tomorrow.strftime("%Y-%m-%d")
+                elif "next week" in pattern:
+                    next_week = now + timedelta(days=7)
+                    date_info = next_week.strftime("%Y-%m-%d")
+                elif "this week" in pattern:
+                    # Default to next business day this week
+                    days_ahead = 1 if now.weekday() < 4 else (7 - now.weekday())
+                    next_day = now + timedelta(days=days_ahead)
+                    date_info = next_day.strftime("%Y-%m-%d")
+                elif pattern in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]:
+                    # Find the next occurrence of this weekday
+                    weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+                    target_weekday = weekdays.index(pattern)
+                    current_weekday = now.weekday()
+                    
+                    # Calculate days until target weekday
+                    days_ahead = (target_weekday - current_weekday) % 7
+                    if days_ahead == 0:  # If it's today, assume next week
+                        days_ahead = 7
+                    
+                    target_date = now + timedelta(days=days_ahead)
+                    date_info = target_date.strftime("%Y-%m-%d")
+                    print(f"🔍 DEBUG: Found {pattern} -> {date_info}")
+                break
+        
+        # Default to today if no date found
+        if not date_info:
+            date_info = now.strftime("%Y-%m-%d")
+        
+        # Extract time info for create_event
+        time_info = "10:00"  # Default
+        
+        # DEBUG: Print what we're parsing
+        print(f"🔍 DEBUG: Parsing time from: '{user_lower}'")
+        
+        # Check for special time words first
+        if "noon" in user_lower or "12 pm" in user_lower or "12pm" in user_lower:
+            time_info = "12:00"
+            print(f"🔍 DEBUG: Found noon -> {time_info}")
+        elif "midnight" in user_lower or "12 am" in user_lower or "12am" in user_lower:
+            time_info = "00:00"
+            print(f"🔍 DEBUG: Found midnight -> {time_info}")
+        else:
+            # Try different time patterns (improved for your use case)
+            time_patterns = [
+                r"(\d{1,2}):(\d{2})\s*(a\.?m\.?|p\.?m\.?)",  # "2:30pm", "10:15am"
+                r"(\d{1,2})\s*(a\.?m\.?|p\.?m\.?)",          # "2pm", "10am"
+                r"(\d{1,2})-(\d{1,2})",                      # "2-5" (2pm to 5pm)
+                r"(\d{1,2})\s*to\s*(\d{1,2})",              # "2 to 5"
+                r"from\s*(\d{1,2})\s*to\s*(\d{1,2})",       # "from 2 to 5"
+            ]
+            
+            for i, pattern in enumerate(time_patterns):
+                time_match = re.search(pattern, user_lower)
+                if time_match:
+                    print(f"🔍 DEBUG: Found time match with pattern {i}: {time_match.groups()}")
+                    
+                    if i <= 1:  # Standard time patterns
+                        if len(time_match.groups()) == 3:  # HH:MM format
+                            hour = int(time_match.group(1))
+                            minute = time_match.group(2)
+                            ampm = time_match.group(3).lower().replace(".", "")
+                        else:  # H format
+                            hour = int(time_match.group(1))
+                            minute = "00"
+                            ampm = time_match.group(2).lower().replace(".", "")
+                        
+                        print(f"🔍 DEBUG: Parsed - hour:{hour}, minute:{minute}, ampm:{ampm}")
+                        
+                        # Convert to 24-hour format
+                        if "pm" in ampm and hour != 12:
+                            hour += 12
+                        elif "am" in ampm and hour == 12:
+                            hour = 0
+                        
+                        time_info = f"{hour:02d}:{minute}"
+                    
+                    elif i >= 2:  # Range patterns like "2-5" or "2 to 5"
+                        start_hour = int(time_match.group(1))
+                        end_hour = int(time_match.group(2))
+                        
+                        # Assume afternoon if reasonable hours
+                        if start_hour <= 12 and end_hour <= 12:
+                            if start_hour < 8:  # Likely PM if before 8
+                                start_hour += 12
+                            if end_hour < 8:  # Likely PM if before 8
+                                end_hour += 12
+                        
+                        time_info = f"{start_hour:02d}:00"
+                        print(f"🔍 DEBUG: Range detected - start:{start_hour:02d}:00, end:{end_hour:02d}:00")
+                    
+                    print(f"🔍 DEBUG: Final time: {time_info}")
+                    break
+        
+        if time_info == "10:00":
+            print(f"🔍 DEBUG: No time found, using default: {time_info}")
+        
+        # Extract event title for create_event
+        event_title = None  # Will be None if not found
+        if action == "create_event":
+            # Try to extract event details with improved patterns
+            patterns = [
+                r"for (.+?)(?:\s+at\s+\d+|\s+on\s+\w+|\s+tomorrow|\s+today|$)",  # "for the dentist at 2pm" or "for the dentist tomorrow"
+                r"add (.+?)(?:\s+at\s+\d+|\s+on\s+\w+|\s+tomorrow|\s+today|$)",  # "add dentist appointment at 2pm"
+                r"schedule (.+?)(?:\s+at\s+\d+|\s+on\s+\w+|\s+tomorrow|\s+today|$)",  # "schedule meeting at 3pm"
+                r"appointment.+?for (.+?)(?:\s+at\s+\d+|\s+on\s+\w+|\s+tomorrow|\s+today|$)",  # "appointment for dentist at 2pm"
+                r"book (.+?)(?:\s+at\s+\d+|\s+on\s+\w+|\s+tomorrow|\s+today|$)"  # "book dinner at 7pm"
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, user_input, re.IGNORECASE)
+                if match:
+                    event_title = match.group(1).strip()
+                    # Clean up common words
+                    event_title = re.sub(r'^(an?\s+)', '', event_title, flags=re.IGNORECASE)
+                    # Don't use generic words as titles
+                    if event_title.lower() in ["appointment", "meeting", "event", "it", "this", "that"]:
+                        event_title = None
+                    break
+        
+        # Build parameters dict
+        if action == "create_event":
+            # Get user's timezone (assuming Eastern Time, but this should be configurable)
+            user_tz = pytz.timezone('America/New_York')  # Eastern Time
+            
+            # Parse the date and time in user's timezone
+            start_dt = datetime.strptime(f"{date_info} {time_info}", "%Y-%m-%d %H:%M")
+            start_dt = user_tz.localize(start_dt)
+            
+            # Convert to UTC for Google Calendar API
+            start_dt_utc = start_dt.astimezone(pytz.UTC)
+            end_dt_utc = start_dt_utc + timedelta(hours=1)  # Default 1-hour duration
+            
+            # Format as ISO strings
+            start_datetime = start_dt_utc.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            end_datetime = end_dt_utc.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            
+            print(f"🔍 DEBUG: User time: {start_dt} -> UTC time: {start_dt_utc}")
+            
+            params = {
+                "summary": event_title,
+                "start_time": start_datetime,
+                "end_time": end_datetime,
+                "description": f"Event created via Jarvis voice command: {user_input}"
+            }
+        elif action == "update_event":
+            # For update, we need to find the event first
+            # We'll use the event title to search for existing events
+            params = {
+                "summary": event_title,
+                "date": date_info,
+                "new_start_time": f"{date_info}T{time_info}:00",
+                "search_query": user_input  # Pass full query for intelligent matching
+            }
+            # Add end time if we have new timing
+            if time_info != "10:00":  # If we detected a new time
+                start_hour = int(time_info.split(":")[0])
+                end_hour = (start_hour + 1) % 24
+                end_datetime = f"{date_info}T{end_hour:02d}:00:00"
+                if end_hour < start_hour:
+                    end_date = datetime.strptime(date_info, "%Y-%m-%d") + timedelta(days=1)
+                    end_datetime = f"{end_date.strftime('%Y-%m-%d')}T{end_hour:02d}:00:00"
+                params["new_end_time"] = end_datetime
+        elif action == "delete_event":
+            params = {
+                "summary": event_title,
+                "date": date_info,
+                "search_query": user_input
+            }
+        else:
+            # For list_events and other actions
+            params = {
+                "date": date_info
+            }
+                
+        return action, params
+    
+    def _extract_gmail_request(self, user_input: str) -> tuple[str, str]:
+        """Extract Gmail action and details from user input."""
+        user_lower = user_input.lower()
+        
+        # Extract action
+        if "send" in user_lower:
+            action = "send_email"
+        elif "draft" in user_lower:
+            action = "draft_email"
+        elif "unread" in user_lower:
+            action = "list_unread"
+        elif "recent" in user_lower:
+            action = "list_recent"
+        else:
+            action = "list_recent"
+        
+        # Extract details - for now just pass the full input
+        return action, user_input
+    
+    def _format_calendar_result(self, data: Dict[str, Any]) -> str:
+        """Format calendar results for conversation."""
+        try:
+            if isinstance(data, dict):
+                if "events" in data:
+                    events = data["events"][:5]  # First 5 events
+                    if not events:
+                        return "You have no events scheduled."
+                    
+                    formatted = "Here are your upcoming events: "
+                    for event in events:
+                        title = event.get("summary", "Untitled")
+                        time = event.get("start", {}).get("dateTime", "No time")
+                        formatted += f"{title} at {time}. "
+                    return formatted
+                elif "event" in data and data.get("success"):
+                    # Handle create_event success
+                    event = data.get("event", {})
+                    title = event.get("summary", "Event")
+                    start_time = event.get("start_time", "")
+                    # Extract date and time from ISO format
+                    if "T" in start_time:
+                        date_part = start_time.split("T")[0]
+                        time_part = start_time.split("T")[1].split(":")[0]
+                        formatted_time = f"{int(time_part) % 12 or 12}{'AM' if int(time_part) < 12 else 'PM'}"
+                        return f"Perfect! I've added '{title}' to your calendar for {date_part} at {formatted_time}."
+                    return f"I've successfully added '{title}' to your calendar."
+                elif "message" in data:
+                    return data["message"]
+                elif "success" in data and data["success"]:
+                    return "Calendar operation completed successfully."
+            return str(data)
+        except:
+            return "I couldn't parse the calendar information."
+    
+    def _format_gmail_result(self, data: Dict[str, Any]) -> str:
+        """Format Gmail results for conversation."""
+        try:
+            if isinstance(data, dict):
+                if "emails" in data:
+                    emails = data["emails"][:3]  # First 3 emails
+                    if not emails:
+                        return "You have no new emails."
+                    
+                    formatted = "Here are your recent emails: "
+                    for email in emails:
+                        subject = email.get("subject", "No subject")
+                        sender = email.get("from", "Unknown sender")
+                        formatted += f"'{subject}' from {sender}. "
+                    return formatted
+                elif "message" in data:
+                    return data["message"]
+            return str(data)
+        except:
+            return "I couldn't parse the email information."
+    
     async def _extract_personal_info(self, user_input: str, assistant_response: str):
         """Extract and store personal information from conversation."""
         user_lower = user_input.lower()
@@ -482,12 +907,17 @@ Keep responses brief and natural.
                 personal_memory.set_user_name(potential_name)
                 logger.info(f"Learned user name: {potential_name}")
         elif "i'm " in user_lower and len(user_input.split()) >= 2:
-            # Extract name after "i'm" - be more careful
+            # Extract name after "i'm" - only if it looks like name introduction
+            # Avoid common words that aren't names
+            avoid_words = {"looking", "going", "trying", "working", "thinking", "feeling", "getting", "doing", "coming", "having", "making", "taking", "good", "bad", "fine", "okay", "here", "there", "ready", "done", "back", "up", "down"}
+            
             words = user_input.split()
             for i, word in enumerate(words):
                 if word.lower() == "i'm" and i + 1 < len(words):
                     potential_name = words[i + 1].strip(".,!?")
-                    if potential_name and potential_name.isalpha() and len(potential_name) > 1:
+                    if (potential_name and potential_name.isalpha() and 
+                        len(potential_name) > 1 and potential_name.lower() not in avoid_words and
+                        potential_name[0].isupper()):  # Names usually start with capital
                         personal_memory.set_user_name(potential_name)
                         logger.info(f"Learned user name: {potential_name}")
                         break

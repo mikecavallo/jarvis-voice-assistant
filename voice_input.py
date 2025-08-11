@@ -26,8 +26,7 @@ from memory.state_manager import jarvis_state
 
 # Suppress audio warnings
 warnings.filterwarnings('ignore', category=UserWarning)
-os.environ['ALSA_PCM_CARD'] = '0'
-os.environ['ALSA_PCM_DEVICE'] = '0'
+# Let system choose audio device automatically
 
 
 class VoiceInput:
@@ -59,6 +58,7 @@ class VoiceInput:
         self.microphone = self._find_optimal_microphone()
         self.is_listening = False
         self.wake_word = config.get("general", "wake_word", "jarvis").lower()
+        self.use_vad = config.get("speech_recognition", "use_voice_activity_detection", True)
         
         # Initialize Whisper model if configured
         self.whisper_model = self._initialize_whisper()
@@ -78,21 +78,28 @@ class VoiceInput:
         Returns:
             sr.Microphone: Configured microphone object
         """
-        # Configuration options in order of preference
+        # Configuration options in order of preference (robust fallbacks)
         configs = [
-            {"device_index": None},                          # System default
-            {"device_index": 0},                            # First device
-            {"device_index": 0, "sample_rate": 16000},      # Lower sample rate
-            {"device_index": 0, "sample_rate": 44100},      # CD quality
-            {"device_index": 0, "sample_rate": 22050},      # Half CD quality
+            {"device_index": None},                          # System default (let system choose)
+            {"device_index": 0},                             # First device
+            {"device_index": None, "sample_rate": 44100},    # System default with common rate
+            {"device_index": None, "sample_rate": 22050},    # System default with lower rate
+            {"device_index": None, "sample_rate": 16000},    # System default with Whisper rate
+            {"device_index": 0, "sample_rate": 44100},       # First device with common rate
+            {"device_index": 0, "sample_rate": 22050},       # First device with lower rate
+            {"device_index": 0, "sample_rate": 16000},       # First device with Whisper rate
         ]
         
         for config_dict in configs:
             try:
-                mic = sr.Microphone(**config_dict)
-                # Test if microphone can be opened
-                with mic as source:
-                    pass
+                # Suppress ALSA errors during microphone testing
+                with redirect_stderr(open(os.devnull, 'w')):
+                    mic = sr.Microphone(**config_dict)
+                    # Test if microphone can be opened
+                    with mic as source:
+                        # Quick test to ensure it works
+                        source.CHUNK = 1024  # Smaller chunk size for compatibility
+                
                 print(f"✅ Using microphone config: {config_dict}")
                 jarvis_state.log_action("mic_config_found", f"Config: {config_dict}", "voice_input")
                 return mic
@@ -115,9 +122,10 @@ class VoiceInput:
             return None
             
         try:
-            # Use base model for good balance of speed and accuracy
-            model = WhisperModel("base", device="cpu", compute_type="int8")
-            jarvis_state.log_action("whisper_initialized", "Whisper model loaded", "voice_input")
+            # Use medium model for much better accuracy (larger but more accurate)
+            model = WhisperModel("medium", device="cpu", compute_type="int8")
+            print("✅ Whisper medium model loaded successfully!")
+            jarvis_state.log_action("whisper_initialized", "Whisper medium model loaded", "voice_input")
             return model
         except Exception as e:
             jarvis_state.log_action("whisper_error", f"Failed to load Whisper: {e}", "voice_input")
@@ -136,16 +144,18 @@ class VoiceInput:
         """
         try:
             with self.microphone as source:
-                print("Calibrating microphone for ambient noise... Please stay quiet.")
-                self.recognizer.adjust_for_ambient_noise(source, duration=1)
+                print("Calibrating microphone for optimal speech recognition... Please stay quiet for 2 seconds.")
+                self.recognizer.adjust_for_ambient_noise(source, duration=2)  # Longer calibration
                 
-                # Optimize sensitivity settings
-                self.recognizer.energy_threshold = 200        # Lower = more sensitive
-                self.recognizer.dynamic_energy_threshold = True
-                self.recognizer.pause_threshold = 0.5         # Shorter pause detection
+                # Optimize sensitivity settings for cleaner audio capture
+                self.recognizer.energy_threshold = 300        # Higher threshold to avoid background noise
+                self.recognizer.dynamic_energy_threshold = True  # Adapt to changing conditions
+                self.recognizer.pause_threshold = 0.8         # Shorter pause to stop recording sooner
+                self.recognizer.non_speaking_duration = 0.5   # Stop recording sooner after silence
+                self.recognizer.phrase_threshold = 0.3        # Minimum phrase length
                 
-                print("Microphone calibrated with improved sensitivity!")
-                jarvis_state.log_action("mic_calibrated", "Microphone calibrated", "voice_input")
+                print("✅ Microphone calibrated for high-accuracy speech recognition!")
+                jarvis_state.log_action("mic_calibrated", "Microphone calibrated for accuracy", "voice_input")
         except Exception as e:
             print(f"Warning: Could not calibrate microphone: {e}")
             jarvis_state.log_action("mic_calibration_failed", str(e), "voice_input")
@@ -196,7 +206,7 @@ class VoiceInput:
                 jarvis_state.log_action("wake_word_error", str(e), "voice_input")
                 time.sleep(1)
     
-    def listen_for_command(self, timeout: int = 10) -> Optional[str]:
+    def listen_for_command(self, timeout: int = 15) -> Optional[str]:
         """
         Listen for a voice command after wake word detection.
         
@@ -211,7 +221,10 @@ class VoiceInput:
         """
         try:
             print("🎤 Ready to listen for command...")
-            print(f"💬 Speak clearly within {timeout} seconds!")
+            if self.use_vad:
+                print("💬 Speak now - I'll stop listening when you finish!")
+            else:
+                print(f"💬 Speak clearly within {timeout} seconds!")
             
             # Capture audio with error suppression
             with self.microphone as source:
@@ -219,7 +232,12 @@ class VoiceInput:
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
                 
                 print("🔴 Listening now...")
-                audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=8)
+                if self.use_vad:
+                    audio = self._listen_with_vad(source, timeout)
+                    if audio is None:
+                        return None
+                else:
+                    audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=8)
                 print("✅ Audio captured, processing...")
             
             # Use more accurate recognition for commands
@@ -240,6 +258,45 @@ class VoiceInput:
             jarvis_state.log_action("command_recognition_error", str(e), "voice_input")
             return None
     
+    def _listen_with_vad(self, source, max_timeout: int = 15) -> Optional:
+        """
+        Listen with simplified voice activity detection.
+        
+        Args:
+            source: Microphone source
+            max_timeout: Maximum time to wait for speech to start
+            
+        Returns:
+            Audio data or None if timeout/no speech
+        """
+        try:
+            # Use SpeechRecognition's built-in pause detection optimized for accuracy
+            original_pause = self.recognizer.pause_threshold
+            self.recognizer.pause_threshold = 0.8  # Stop after 0.8 seconds of silence to avoid long recordings
+            
+            try:
+                audio_data = self.recognizer.listen(
+                    source, 
+                    timeout=max_timeout,
+                    phrase_time_limit=5  # Reduce to 5 seconds max per phrase
+                )
+                return audio_data
+                
+            finally:
+                # Restore original pause threshold
+                self.recognizer.pause_threshold = original_pause
+                
+        except sr.WaitTimeoutError:
+            print("⏰ No speech detected")
+            return None
+        except Exception as e:
+            print(f"❌ VAD error: {e}")
+            # Fallback to regular listening
+            try:
+                return self.recognizer.listen(source, timeout=3, phrase_time_limit=8)
+            except:
+                return None
+    
     def _recognize_speech(self, audio_data, quick: bool = False) -> Optional[str]:
         """
         Convert audio to text using the configured recognition engine.
@@ -254,9 +311,11 @@ class VoiceInput:
         engine = config.get("speech_recognition", "engine", "google")
         
         try:
-            if engine == "whisper" and self.whisper_model and not quick:
+            if engine == "whisper" and self.whisper_model:
+                # Always use Whisper when available and configured
                 return self._recognize_with_whisper(audio_data)
             else:
+                # Fallback to Google Speech Recognition
                 return self._recognize_with_google(audio_data)
         except Exception as e:
             print(f"Recognition error: {e}")
@@ -293,8 +352,13 @@ class VoiceInput:
             str: Recognized text, or None if recognition failed
         """
         try:
-            # Convert audio data to WAV format for Whisper
-            wav_data = audio_data.get_wav_data()
+            # Convert audio data to WAV format for Whisper with optimal settings
+            # Use 16kHz sample rate which is optimal for Whisper
+            try:
+                wav_data = audio_data.get_wav_data(convert_rate=16000, convert_width=2)
+            except:
+                # Fallback: use original sample rate if conversion fails
+                wav_data = audio_data.get_wav_data()
             
             # Create temporary file for Whisper processing
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
@@ -302,9 +366,45 @@ class VoiceInput:
                 tmp_file_path = tmp_file.name
             
             try:
-                # Transcribe with Whisper
-                segments, _ = self.whisper_model.transcribe(tmp_file_path, beam_size=5)
+                # Transcribe with Whisper using maximum accuracy settings
+                segments, info = self.whisper_model.transcribe(
+                    tmp_file_path, 
+                    beam_size=10,  # Increased beam size for better accuracy
+                    language="en",  # Force English for better accuracy
+                    condition_on_previous_text=False,  # Prevent hallucination
+                    temperature=0.0,  # Use greedy decoding for consistency
+                    compression_ratio_threshold=2.4,  # Default threshold
+                    log_prob_threshold=-1.0,  # Default threshold
+                    no_speech_threshold=0.6,  # More conservative speech detection
+                    word_timestamps=True,  # Enable word-level timestamps for better parsing
+                    prepend_punctuations="\"'([{-",
+                    append_punctuations="\"'.,!?:)]}",
+                    vad_filter=True,  # Filter out background noise
+                    vad_parameters=dict(
+                        min_silence_duration_ms=800,  # Longer silence to stop processing sooner
+                        speech_pad_ms=200,  # Less padding around speech
+                    )
+                )
+                
                 text = " ".join([segment.text for segment in segments]).strip()
+                print(f"🔍 Whisper transcription: '{text}'")
+                print(f"🔍 Whisper confidence: {info.language_probability:.2f}")
+                print(f"🔍 Audio duration: {info.duration:.1f}s")
+                
+                # Check for repeated content (likely audio feedback/echo)
+                words = text.split()
+                if len(words) > 10:  # If more than 10 words
+                    # Check if first few words repeat throughout
+                    first_phrase = " ".join(words[:5])
+                    if text.count(first_phrase) > 2:  # If phrase repeats more than twice
+                        print("⚠️  Detected repeated audio - possible microphone feedback")
+                        # Return only the first occurrence
+                        text = first_phrase
+                
+                # If confidence is very low, warn but still return the text
+                if info.language_probability < 0.5:
+                    print("⚠️  Low confidence transcription - consider speaking more clearly")
+                
                 return text if text else None
             finally:
                 # Clean up temporary file
@@ -361,7 +461,7 @@ class VoiceInput:
                 print("🔴 Listening for command...")
                 
                 # Listen for command directly
-                command = self.listen_for_command(timeout=10)
+                command = self.listen_for_command()
                 
                 if command:
                     # Check for stop commands

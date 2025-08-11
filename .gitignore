@@ -1,5 +1,7 @@
 # Environment variables (contains sensitive data)
 .env
+.env.template
+.env.example
 
 # API Keys and secrets
 config.json
@@ -24,6 +26,14 @@ jarvis_state.json
 # Logs
 logs/
 *.log
+mcp_server.log
+
+# Process IDs
+*.pid
+.mcp_server.pid
+
+# Audio files
+*.wav
 
 # OS files
 .DS_Store

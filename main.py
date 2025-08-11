@@ -30,11 +30,16 @@ import threading
 from typing import Optional
 from pathlib import Path
 
-# Suppress console errors BEFORE any imports
+# Suppress console errors and configure audio BEFORE any imports
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
-os.environ['ALSA_PCM_CARD'] = '0' 
-os.environ['ALSA_PCM_DEVICE'] = '0'
 os.environ['ANONYMIZED_TELEMETRY'] = 'False'
+
+# Remove problematic ALSA card references
+# Let the system choose the best audio device automatically
+
+# Safe ALSA error suppression without breaking audio
+os.environ['ALSA_CONFIG_DIR'] = '/usr/share/alsa'  # Use system default
+os.environ['SDL_AUDIODRIVER'] = 'pulse'  # Prefer PulseAudio if available
 
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='pygame')
@@ -114,13 +119,15 @@ class JarvisAssistant:
         Args:
             command_text: The recognized speech text
         """
-        print(f"🎯 Processing command: {command_text}")
+        # Log user input to console
+        print(f"User: {command_text}", flush=True)
+        print(f"🎯 Processing command: {command_text}", flush=True)
         
         # Parse and execute the command
         response = self.command_parser.parse_command(command_text)
         
         if response:
-            print(f"💬 Response: {response}")
+            print(f"🤖 Jarvis: {response}", flush=True)
             
             # Speak the response
             if self.voice_output:
@@ -132,7 +139,7 @@ class JarvisAssistant:
                 self.shutdown()
                 return
         
-        print("🎤 Listening for next command...")
+        print("🎤 Listening for next command...", flush=True)
     
     def run_interactive_mode(self):
         """Run Jarvis in interactive text mode (no voice)."""

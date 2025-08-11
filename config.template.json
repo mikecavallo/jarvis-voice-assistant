@@ -1,0 +1,19 @@
+{
+    "elevenlabs": {
+        "api_key": null,
+        "voice_id": "Dslrhjl3ZpzrctukrQSN",
+        "model_id": "eleven_monolingual_v1"
+    },
+    "speech_recognition": {
+        "engine": "google",
+        "language": "en-US",
+        "timeout": 1,
+        "phrase_timeout": 3,
+        "use_voice_activity_detection": true
+    },
+    "general": {
+        "wake_word": "jarvis",
+        "response_delay": 0.5,
+        "max_listening_time": 10
+    }
+}

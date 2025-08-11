@@ -82,6 +82,20 @@ class MCPClient:
                 description="Execute system commands safely",
                 parameters=["command"],
                 requires_auth=False
+            ),
+            "calendar": MCPTool(
+                name="calendar",
+                endpoint="/google_calendar",
+                description="Access and manage Google Calendar events, schedule meetings, check availability",
+                parameters=["action", "date", "event_details"],
+                requires_auth=True
+            ),
+            "gmail": MCPTool(
+                name="gmail", 
+                endpoint="/gmail",
+                description="Read, send, and manage Gmail emails with AI analysis",
+                parameters=["action", "email_details"],
+                requires_auth=True
             )
         }
         
@@ -134,16 +148,33 @@ class MCPClient:
                     raise ValueError("MCP_API_KEY environment variable not set")
                 headers["Authorization"] = f"Bearer {api_key}"
             
-            # Make request
-            async with session.get(url, params=kwargs, headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    logger.info(f"MCP tool '{tool_name}' executed successfully")
-                    return {"success": True, "data": data}
-                else:
-                    error_text = await response.text()
-                    logger.error(f"MCP tool '{tool_name}' failed: {response.status} - {error_text}")
-                    return {"success": False, "error": f"HTTP {response.status}: {error_text}"}
+            # Make request - use POST for calendar and gmail, GET for others
+            if tool_name in ["calendar", "gmail"]:
+                # POST endpoints - action as query param, other params in JSON body
+                headers["Content-Type"] = "application/json"
+                action = kwargs.pop("action", "list_events")
+                url_with_action = f"{url}?action={action}"
+                json_data = kwargs.get("parameters", kwargs)
+                async with session.post(url_with_action, json=json_data, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        logger.info(f"MCP tool '{tool_name}' executed successfully")
+                        return {"success": True, "data": data}
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"MCP tool '{tool_name}' failed: {response.status} - {error_text}")
+                        return {"success": False, "error": f"HTTP {response.status}: {error_text}"}
+            else:
+                # GET endpoints with query params
+                async with session.get(url, params=kwargs, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        logger.info(f"MCP tool '{tool_name}' executed successfully")
+                        return {"success": True, "data": data}
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"MCP tool '{tool_name}' failed: {response.status} - {error_text}")
+                        return {"success": False, "error": f"HTTP {response.status}: {error_text}"}
                     
         except Exception as e:
             logger.error(f"Error calling MCP tool '{tool_name}': {e}")
@@ -218,6 +249,17 @@ class MCPClient:
         fs_keywords = ["list files", "show files", "directory", "folder contents", "ls", "dir"]
         if any(keyword in user_lower for keyword in fs_keywords):
             return "filesystem"
+        
+        # Calendar keywords
+        calendar_keywords = ["calendar", "schedule", "meeting", "appointment", "event", "what's on my calendar", "free time", "available", "busy", "august", "september", "today", "tomorrow", "next week", "next month", "add an event", "create event", "book appointment", "add appointment", "schedule meeting", "dentist"]
+        if any(keyword in user_lower for keyword in calendar_keywords):
+            print(f"🔍 DEBUG: Calendar tool detected for: '{user_input}'")
+            return "calendar"
+        
+        # Gmail keywords
+        gmail_keywords = ["email", "gmail", "inbox", "messages", "send email", "draft", "mail", "unread emails", "recent emails"]
+        if any(keyword in user_lower for keyword in gmail_keywords):
+            return "gmail"
         
         return None
     
