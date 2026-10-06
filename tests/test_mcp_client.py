@@ -28,3 +28,25 @@ def test_unknown_tool_raises():
 
     with pytest.raises(ValueError):
         asyncio.run(MCPClient().call_tool("teleport"))
+
+
+def test_list_files_posts_to_fs_endpoint_with_auth(monkeypatch, fake_http):
+    import asyncio
+
+    from conftest import FakeResponse
+
+    monkeypatch.setenv("MCP_API_KEY", "k")
+    sessions = fake_http({"/fs/Documents": FakeResponse(200, {"items": []})})
+    result = asyncio.run(MCPClient("http://mcp:8000").list_files("Documents"))
+    assert result == {"success": True, "data": {"items": []}}
+    call = sessions[-1].calls[0]
+    assert call["method"] == "POST"
+    assert call["json"] == {"action": "list", "parameters": {}}
+    assert call["headers"] == {"Authorization": "Bearer k"}
+
+
+def test_list_files_without_key(monkeypatch):
+    import asyncio
+
+    monkeypatch.delenv("MCP_API_KEY", raising=False)
+    assert asyncio.run(MCPClient().list_files())["success"] is False

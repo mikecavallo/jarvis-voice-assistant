@@ -62,6 +62,10 @@ class FakeSession:
     def __init__(self, routes):
         self.routes = routes
         self.calls = []
+        self.closed = False
+
+    async def close(self):
+        self.closed = True
 
     def _respond(self, method, url, **kwargs):
         self.calls.append({"method": method, "url": url, **kwargs})

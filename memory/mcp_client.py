@@ -76,17 +76,17 @@ class MCPClient:
             ),
             "filesystem": MCPTool(
                 name="filesystem",
-                endpoint="/filesystem",
+                endpoint="/fs",
                 description="List and browse files and directories",
                 parameters=["path", "operation"],
-                requires_auth=False
+                requires_auth=True
             ),
             "system": MCPTool(
                 name="system",
                 endpoint="/system",
                 description="Execute system commands safely",
                 parameters=["command"],
-                requires_auth=False
+                requires_auth=True
             ),
             "calendar": MCPTool(
                 name="calendar",
@@ -206,13 +206,30 @@ class MCPClient:
         """Search the web."""
         return await self.call_tool("search", query=query, num_results=num_results)
     
+    async def _post_json(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """POST a JSON body to an authenticated server path."""
+        api_key = os.getenv("MCP_API_KEY")
+        if not api_key:
+            return {"success": False, "error": "MCP_API_KEY environment variable not set"}
+        session = await self._get_session()
+        try:
+            async with session.post(
+                f"{self.base_url}{path}", json=body, headers={"Authorization": f"Bearer {api_key}"}
+            ) as response:
+                if response.status == 200:
+                    return {"success": True, "data": await response.json()}
+                return {"success": False, "error": f"HTTP {response.status}: {await response.text()}"}
+        except Exception as e:
+            logger.error(f"Error calling MCP server {path}: {e}")
+            return {"success": False, "error": str(e)}
+
     async def list_files(self, path: str = ".") -> Dict[str, Any]:
-        """List files in directory."""
-        return await self.call_tool("filesystem", path=path, operation="list")
-    
+        """List files in a directory (relative to the server's home-directory sandbox)."""
+        return await self._post_json(f"/fs/{path.lstrip('/')}", {"action": "list", "parameters": {}})
+
     async def run_system_command(self, command: str) -> Dict[str, Any]:
-        """Run system command safely."""
-        return await self.call_tool("system", command=command)
+        """Run a whitelisted system command on the server."""
+        return await self._post_json(f"/system/{command}", {})
     
     def get_available_tools(self) -> Dict[str, str]:
         """Get list of available tools with descriptions."""
