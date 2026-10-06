@@ -87,8 +87,8 @@ class ElevenLabsOutput:
         Logs appropriate status messages for debugging.
         """
         if not self.api_key:
-            print("Warning: ElevenLabs API key not found in config!")
-            print("Please add your API key to config.json")
+            print("Warning: ElevenLabs API key not set - responses will be text only.")
+            print("Set ELEVENLABS_API_KEY in your .env file to enable voice output.")
             jarvis_state.log_action("elevenlabs_no_key", "API key missing", "elevenlabs_output")
         else:
             jarvis_state.log_action("elevenlabs_initialized", f"Using voice ID: {self.voice_id}", "elevenlabs_output")

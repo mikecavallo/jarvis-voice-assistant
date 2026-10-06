@@ -6,7 +6,6 @@ This script provides detailed instructions for obtaining API keys
 for each MCP server tool and helps set up the .env file.
 """
 
-import os
 from pathlib import Path
 
 API_SERVICES = {
@@ -83,7 +82,7 @@ def print_header():
 def check_env_file():
     """Check if .env file exists and create if needed."""
     env_file = Path(".env")
-    template_file = Path(".env.template")
+    template_file = Path(".env.example")
     
     if not env_file.exists():
         if template_file.exists():
@@ -92,7 +91,7 @@ def check_env_file():
             shutil.copy(template_file, env_file)
             print("✅ Created .env file")
         else:
-            print("❌ No .env.template found. Creating basic .env file...")
+            print("❌ No .env.example found. Creating basic .env file...")
             with open(env_file, 'w') as f:
                 f.write("# Jarvis Assistant Environment Variables\n")
                 f.write("# Add your API keys below\n\n")
@@ -149,7 +148,7 @@ def print_service_setup(service_id: str, service: dict):
     for step in service['signup_steps']:
         print(f"   {step}")
     print()
-    print(f"Test Command:")
+    print("Test Command:")
     print(f"   {service['test_command']}")
     print()
 
@@ -183,14 +182,12 @@ def print_testing_instructions():
     print("1. Start the MCP server:")
     print("   python start_mcp_server.py")
     print()
-    print("2. In another terminal, test the tools:")
-    print("   python test_mcp_tools.py")
+    print("2. In another terminal, check that the server is up and which tools are configured:")
+    print("   curl http://127.0.0.1:8000/health")
     print()
-    print("3. For verbose output:")
-    print("   python test_mcp_tools.py --verbose")
-    print()
-    print("4. Test specific server URL:")
-    print("   python test_mcp_tools.py --server-url http://localhost:8001")
+    print("3. Run the offline test suite (no API keys or network needed):")
+    print("   pytest")
+
 
 def main():
     """Main setup guide function."""

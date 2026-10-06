@@ -27,7 +27,7 @@ setup: ## Complete development environment setup
 	@echo "⚙️  Checking environment configuration..."
 	@if [ ! -f ".env" ]; then \
 		echo "📝 Creating .env file from template..."; \
-		cp .env.template .env; \
+		cp .env.example .env; \
 		echo "⚠️  Please edit .env file with your API keys!"; \
 		echo "   Generate MCP_API_KEY with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""; \
 	else \

@@ -74,7 +74,7 @@ class ConversationManager:
                 context_parts.append(f"Past conversation {i+1}: {content}")
             
             if context_parts:
-                return f"RELEVANT PAST CONVERSATIONS:\n" + "\n".join(context_parts[:3])  # Limit to 3 most relevant
+                return "RELEVANT PAST CONVERSATIONS:\n" + "\n".join(context_parts[:3])  # Limit to 3 most relevant
             
             return ""
             
@@ -174,8 +174,6 @@ Remember: You are the intelligent orchestrator managing all system capabilities 
     
     def _get_introduction_prompt(self) -> str:
         """Get meet-and-greet system prompt."""
-        missing_info = personal_memory.get_missing_info()
-        
         intro_prompt = """SPECIAL INSTRUCTIONS - NAME UNKNOWN:
 You don't know this user's name yet. After answering their question, casually ask:
 "By the way, what's your name?"
@@ -440,9 +438,9 @@ Keep responses brief and natural.
                     location_part = user_input[start_idx:].strip()
                     # Take first few words as location
                     location = " ".join(location_part.split()[:3])
-                    if location and not location.lower() in ["the", "weather", "forecast"]:
+                    if location and location.lower() not in ["the", "weather", "forecast"]:
                         return location
-                except:
+                except Exception:
                     pass
         
         # Default to user's stored location or ask
@@ -459,7 +457,7 @@ Keep responses brief and natural.
                 start_idx = user_lower.find("about") + 5
                 query = user_input[start_idx:].strip()
                 return query if query else None
-            except:
+            except Exception:
                 pass
         
         return None  # Return general news
@@ -477,7 +475,7 @@ Keep responses brief and natural.
                     start_idx = user_lower.find(trigger) + len(trigger)
                     query = user_input[start_idx:].strip()
                     return query if query else None
-                except:
+                except Exception:
                     pass
         
         return None
@@ -515,7 +513,7 @@ Keep responses brief and natural.
                     return f"{name} is ${price:,.0f}"
             
             return str(data)
-        except:
+        except Exception:
             return str(data)
     
     def _format_weather_result(self, data: Dict[str, Any]) -> str:
@@ -528,7 +526,7 @@ Keep responses brief and natural.
                 
                 return f"The weather in {location} is {condition} with a temperature of {temp}°F"
             return str(data)
-        except:
+        except Exception:
             return str(data)
     
     def _format_news_result(self, data: Dict[str, Any]) -> str:
@@ -542,7 +540,7 @@ Keep responses brief and natural.
                     formatted += f"{i}. {title}. "
                 return formatted
             return str(data)
-        except:
+        except Exception:
             return str(data)
     
     def _format_search_result(self, data: Dict[str, Any]) -> str:
@@ -557,7 +555,7 @@ Keep responses brief and natural.
                     formatted += f"{i}. {title} - {snippet[:100]}... "
                 return formatted
             return str(data)
-        except:
+        except Exception:
             return str(data)
     
     def _format_filesystem_result(self, data: Dict[str, Any]) -> str:
@@ -568,7 +566,7 @@ Keep responses brief and natural.
                 formatted = f"I found {len(files)} items: " + ", ".join(files)
                 return formatted
             return str(data)
-        except:
+        except Exception:
             return str(data)
     
     def _extract_calendar_request(self, user_input: str) -> tuple[str, Dict[str, str]]:
@@ -859,7 +857,7 @@ Keep responses brief and natural.
                 elif "success" in data and data["success"]:
                     return "Calendar operation completed successfully."
             return str(data)
-        except:
+        except Exception:
             return "I couldn't parse the calendar information."
     
     def _format_gmail_result(self, data: Dict[str, Any]) -> str:
@@ -880,7 +878,7 @@ Keep responses brief and natural.
                 elif "message" in data:
                     return data["message"]
             return str(data)
-        except:
+        except Exception:
             return "I couldn't parse the email information."
     
     async def _extract_personal_info(self, user_input: str, assistant_response: str):
@@ -936,7 +934,7 @@ Keep responses brief and natural.
                         personal_memory.set_location(location)
                         logger.info(f"Learned user location: {location}")
                         break
-                except:
+                except Exception:
                     pass
         
         # Extract interests and preferences (simple keyword matching)

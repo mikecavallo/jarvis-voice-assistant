@@ -26,9 +26,6 @@ import os
 import sys
 import time
 import signal
-import threading
-from typing import Optional
-from pathlib import Path
 
 # Suppress console errors and configure audio BEFORE any imports
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
@@ -46,20 +43,25 @@ warnings.filterwarnings('ignore', category=UserWarning, module='pygame')
 warnings.filterwarnings('ignore', category=DeprecationWarning, module='pkg_resources')
 warnings.filterwarnings('ignore', message='.*telemetry.*')
 
-# Import Jarvis modules
-from voice_input import VoiceInput
+# Import Jarvis modules (voice_input is imported lazily so text mode does not
+# need PyAudio, SpeechRecognition or faster-whisper)
 from command_parser import CommandParser
 from elevenlabs_output import ElevenLabsOutput
 from memory.state_manager import jarvis_state
-from memory.chroma_manager import chroma_manager
 from memory.conversation_manager import conversation_manager
-from config import config
 
 class JarvisAssistant:
     """Main Jarvis Assistant class that orchestrates all components."""
     
-    def __init__(self):
-        """Initialize Jarvis with all necessary components."""
+    def __init__(self, enable_voice_input: bool = True):
+        """
+        Initialize Jarvis with all necessary components.
+
+        Args:
+            enable_voice_input: Set False for text mode so no microphone,
+                PyAudio or Whisper model is required.
+        """
+        self.enable_voice_input = enable_voice_input
         print("🤖 Initializing Jarvis Assistant...")
         
         # Initialize components
@@ -79,9 +81,13 @@ class JarvisAssistant:
         jarvis_state.set_current_task("claude", "Jarvis system initialization complete")
         
         print("✅ Jarvis Assistant initialized successfully!")
-        print(f"   - Voice recognition: {'✅ Ready' if self.voice_input else '❌ Failed'}")
+        if self.enable_voice_input:
+            print(f"   - Voice recognition: {'✅ Ready' if self.voice_input else '❌ Unavailable'}")
+        else:
+            print("   - Voice recognition: skipped (text mode)")
         print(f"   - Command parsing: {'✅ Ready' if self.command_parser else '❌ Failed'}")
-        print(f"   - Voice output: {'✅ Ready' if self.voice_output else '❌ Failed'}")
+        voice_out_ready = self.voice_output and self.voice_output.api_key
+        print(f"   - Voice output: {'✅ Ready' if voice_out_ready else '⚠️  Text only (no ELEVENLABS_API_KEY)'}")
         print()
     
     def _initialize_components(self):
@@ -95,11 +101,19 @@ class JarvisAssistant:
             print("🔊 Initializing voice output...")
             self.voice_output = ElevenLabsOutput()
             
-            # Initialize voice input (this might take a moment)
-            print("🎤 Initializing voice input...")
-            self.voice_input = VoiceInput()
+            # Initialize voice input (this might take a moment). A missing
+            # microphone or audio library should not stop text mode.
+            if self.enable_voice_input:
+                print("🎤 Initializing voice input...")
+                try:
+                    from voice_input import VoiceInput
+                    self.voice_input = VoiceInput()
+                except Exception as e:
+                    print(f"⚠️  Voice input unavailable: {e}")
+                    jarvis_state.log_action("voice_input_unavailable", str(e), "main")
+                    self.voice_input = None
             
-            jarvis_state.log_action("jarvis_initialized", "All components loaded successfully", "main")
+            jarvis_state.log_action("jarvis_initialized", "Components loaded", "main")
             
         except Exception as e:
             print(f"❌ Error initializing components: {e}")
@@ -108,7 +122,7 @@ class JarvisAssistant:
     
     def _signal_handler(self, signum, frame):
         """Handle system signals for graceful shutdown."""
-        print(f"\\n🛑 Received signal {signum}. Shutting down gracefully...")
+        print(f"\n🛑 Received signal {signum}. Shutting down gracefully...")
         self.shutdown()
         sys.exit(0)
     
@@ -165,11 +179,11 @@ class JarvisAssistant:
                     
                 except EOFError:
                     # Handle Ctrl+D
-                    print("\\n👋 Goodbye!")
+                    print("\n👋 Goodbye!")
                     break
                 except KeyboardInterrupt:
                     # Handle Ctrl+C
-                    print("\\n👋 Goodbye!")
+                    print("\n👋 Goodbye!")
                     break
                     
         finally:
@@ -205,7 +219,7 @@ class JarvisAssistant:
                 time.sleep(1)
                 
         except KeyboardInterrupt:
-            print("\\n👋 Shutting down...")
+            print("\n👋 Shutting down...")
         finally:
             self.shutdown()
     
@@ -300,45 +314,35 @@ def main():
     print("   A modular Python-based assistant")
     print("=" * 60)
     
+    mode = sys.argv[1].lower() if len(sys.argv) > 1 else None
+    if mode is not None and mode not in ("test", "text", "voice"):
+        print(f"Unknown mode: {mode}")
+        print("Available modes: test, text, voice")
+        sys.exit(1)
+
+    if mode is None:
+        print("🎯 Choose mode:")
+        print("   [1] Voice Mode (recommended)")
+        print("   [2] Text Mode (backup)")
+        print("   [3] Test Mode (diagnostics)")
+        print()
+        try:
+            choice = input("Enter choice (1-3) or press Enter for voice mode: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n👋 Goodbye!")
+            return
+        mode = {"2": "text", "3": "test"}.get(choice, "voice")
+
     try:
-        # Initialize Jarvis
-        jarvis = JarvisAssistant()
-        
-        # Check command line arguments
-        if len(sys.argv) > 1:
-            mode = sys.argv[1].lower()
-            
-            if mode == "test":
-                jarvis.run_test_mode()
-            elif mode == "text":
-                jarvis.run_interactive_mode()
-            elif mode == "voice":
-                jarvis.run_voice_mode()
-            else:
-                print(f"Unknown mode: {mode}")
-                print("Available modes: test, text, voice")
-                sys.exit(1)
+        jarvis = JarvisAssistant(enable_voice_input=(mode != "text"))
+
+        if mode == "test":
+            jarvis.run_test_mode()
+        elif mode == "text":
+            jarvis.run_interactive_mode()
         else:
-            # Default behavior: try voice mode, fall back to text
-            print("🎯 Choose mode:")
-            print("   [1] Voice Mode (recommended)")
-            print("   [2] Text Mode (backup)")
-            print("   [3] Test Mode (diagnostics)")
-            print()
-            
-            try:
-                choice = input("Enter choice (1-3) or press Enter for voice mode: ").strip()
-                
-                if choice == "2":
-                    jarvis.run_interactive_mode()
-                elif choice == "3":
-                    jarvis.run_test_mode()
-                else:
-                    jarvis.run_voice_mode()
-                    
-            except (EOFError, KeyboardInterrupt):
-                print("\\n👋 Goodbye!")
-                
+            jarvis.run_voice_mode()
+
     except Exception as e:
         print(f"❌ Fatal error: {e}")
         jarvis_state.log_action("fatal_error", str(e), "main")

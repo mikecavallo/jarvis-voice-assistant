@@ -1,0 +1,15 @@
+target-version = "py311"
+line-length = 120
+extend-exclude = ["jarvis_env", "scripts"]
+
+[lint]
+# Correctness-focused rule set: syntax errors, undefined names, unused
+# imports/variables, bare excepts. Style is not enforced on legacy code.
+select = ["E4", "E7", "E9", "F"]
+
+[lint.per-file-ignores]
+# These modules must set environment variables before importing audio/DB libs.
+"main.py" = ["E402"]
+"memory/chroma_manager.py" = ["E402"]
+"mcp_server/server.py" = ["E402"]
+"tests/*" = ["E402"]

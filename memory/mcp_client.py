@@ -6,7 +6,6 @@ and execute various tools like weather, crypto, news, search, etc.
 """
 
 import aiohttp
-import asyncio
 import logging
 import os
 from typing import Dict, Any, Optional, List
@@ -275,7 +274,7 @@ class MCPClient:
             try:
                 import asyncio
                 asyncio.create_task(self.session.close())
-            except:
+            except Exception:
                 pass
 
 # Global instance

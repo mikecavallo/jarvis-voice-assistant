@@ -5,7 +5,6 @@ Provides safe system operations like volume, brightness, and application control
 """
 
 import asyncio
-import subprocess
 import os
 from typing import Dict, Any
 from . import BaseTool

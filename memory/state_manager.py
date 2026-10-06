@@ -16,10 +16,9 @@ data persistence across system restarts.
 """
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List
 
 class JarvisState:
     """

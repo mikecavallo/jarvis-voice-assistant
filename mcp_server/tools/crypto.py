@@ -6,7 +6,7 @@ Supports real-time pricing, market data, and trending information.
 """
 
 import aiohttp
-from typing import Dict, Any, List
+from typing import Dict, Any
 from . import BaseTool
 
 class CryptoTool(BaseTool):

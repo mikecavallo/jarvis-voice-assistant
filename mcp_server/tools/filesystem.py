@@ -4,8 +4,6 @@ Filesystem tool for MCP server.
 Provides secure file system operations for local file management.
 """
 
-import os
-import asyncio
 from pathlib import Path
 from typing import Dict, Any
 from . import BaseTool
@@ -74,8 +72,11 @@ class FilesystemTool(BaseTool):
     
     def _safe_path(self, path: str) -> Path:
         """Ensure path is within safe root directory."""
-        full_path = (self.safe_root / path).resolve()
-        if not str(full_path).startswith(str(self.safe_root)):
+        root = self.safe_root.resolve()
+        full_path = (root / path).resolve()
+        # Compare path components, not string prefixes: "/home/al" must not
+        # admit "/home/alice", and "../" or absolute paths must be rejected.
+        if full_path != root and root not in full_path.parents:
             raise ValueError("Path outside safe root directory")
         return full_path
     

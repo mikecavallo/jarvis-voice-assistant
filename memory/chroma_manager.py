@@ -205,7 +205,7 @@ class ChromaManager:
                 if created_at:
                     try:
                         created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00')).timestamp()
-                    except:
+                    except Exception:
                         created_at = time.time()
                 else:
                     created_at = time.time()
@@ -304,10 +304,9 @@ class ChromaManager:
     
     def _get_or_create_collection(self, name: str):
         """Get or create a ChromaDB collection."""
-        try:
-            return self.client.get_collection(name)
-        except ValueError:
-            return self.client.create_collection(name)
+        # get_or_create_collection works across chromadb 0.4.x and 1.x
+        # (1.x raises NotFoundError instead of ValueError from get_collection).
+        return self.client.get_or_create_collection(name)
     
     def add_conversation(self, 
                         conversation_text: str, 
@@ -433,7 +432,7 @@ class ChromaManager:
                 if created_at:
                     try:
                         created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00')).timestamp()
-                    except:
+                    except Exception:
                         created_at = time.time()
                 else:
                     created_at = time.time()
@@ -784,6 +783,7 @@ try:
     chroma_manager = ChromaManager()
 except Exception as e:
     logger.error(f"Failed to initialize ChromaManager: {e}")
+    _disabled_reason = str(e)  # `e` is unbound after the except block ends
     # Create a disabled instance
     chroma_manager = type('DisabledChromaManager', (), {
         'enabled': False,
@@ -791,5 +791,5 @@ except Exception as e:
         'add_fact': lambda *args, **kwargs: "disabled", 
         'search_conversations': lambda *args, **kwargs: [],
         'search_facts': lambda *args, **kwargs: [],
-        'get_stats': lambda: {"status": "disabled", "reason": str(e)}
+        'get_stats': lambda *args, **kwargs: {"status": "disabled", "reason": _disabled_reason}
     })()

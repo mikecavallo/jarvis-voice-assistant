@@ -7,9 +7,9 @@ Provides input validation, sanitization, rate limiting, and other security funct
 import re
 import time
 import hashlib
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -171,7 +171,7 @@ class InputValidator:
             
             # Type validation
             if param_type and not isinstance(value, param_type):
-                if param_type == str and isinstance(value, (int, float)):
+                if param_type is str and isinstance(value, (int, float)):
                     value = str(value)  # Allow string conversion for numbers
                 else:
                     raise ValueError(f"Parameter {key} must be of type {param_type.__name__}")
