@@ -6,12 +6,18 @@ and execute various tools like weather, crypto, news, search, etc.
 """
 
 import aiohttp
+import re
 import logging
 import os
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+
+def _contains_any(text: str, keywords: List[str]) -> bool:
+    """Whole-word/phrase match, so "ls" does not fire on "emails" or "eth" on "something"."""
+    return any(re.search(rf"\b{re.escape(keyword)}\b", text) for keyword in keywords)
+
 
 @dataclass
 class MCPTool:
@@ -226,38 +232,37 @@ class MCPClient:
         
         # Crypto keywords
         crypto_keywords = ["bitcoin", "btc", "ethereum", "eth", "crypto", "cryptocurrency", "price of", "dogecoin", "ada", "solana"]
-        if any(keyword in user_lower for keyword in crypto_keywords):
+        if _contains_any(user_lower, crypto_keywords):
             return "crypto"
         
         # Weather keywords  
         weather_keywords = ["weather", "temperature", "forecast", "rain", "sunny", "cloudy", "hot", "cold"]
-        if any(keyword in user_lower for keyword in weather_keywords):
+        if _contains_any(user_lower, weather_keywords):
             return "weather"
         
         # News keywords
         news_keywords = ["news", "latest news", "headlines", "breaking news", "current events"]
-        if any(keyword in user_lower for keyword in news_keywords):
+        if _contains_any(user_lower, news_keywords):
             return "news"
         
         # Search keywords
         search_keywords = ["search for", "look up", "find information", "google", "web search"]
-        if any(keyword in user_lower for keyword in search_keywords):
+        if _contains_any(user_lower, search_keywords):
             return "search"
         
         # File system keywords
         fs_keywords = ["list files", "show files", "directory", "folder contents", "ls", "dir"]
-        if any(keyword in user_lower for keyword in fs_keywords):
+        if _contains_any(user_lower, fs_keywords):
             return "filesystem"
         
         # Calendar keywords
         calendar_keywords = ["calendar", "schedule", "meeting", "appointment", "event", "what's on my calendar", "free time", "available", "busy", "august", "september", "today", "tomorrow", "next week", "next month", "add an event", "create event", "book appointment", "add appointment", "schedule meeting", "dentist"]
-        if any(keyword in user_lower for keyword in calendar_keywords):
-            print(f"🔍 DEBUG: Calendar tool detected for: '{user_input}'")
+        if _contains_any(user_lower, calendar_keywords):
             return "calendar"
         
         # Gmail keywords
         gmail_keywords = ["email", "gmail", "inbox", "messages", "send email", "draft", "mail", "unread emails", "recent emails"]
-        if any(keyword in user_lower for keyword in gmail_keywords):
+        if _contains_any(user_lower, gmail_keywords):
             return "gmail"
         
         return None
