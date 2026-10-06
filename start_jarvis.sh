@@ -145,15 +145,15 @@ check_venv() {
 check_env() {
     if [ ! -f ".env" ]; then
         echo -e "${RED}❌ .env file not found.${NC}"
-        if [ -f ".env.template" ]; then
-            echo -e "${YELLOW}🔧 Found .env.template. Creating .env file...${NC}"
-            cp .env.template .env
+        if [ -f ".env.example" ]; then
+            echo -e "${YELLOW}🔧 Found .env.example. Creating .env file...${NC}"
+            cp .env.example .env
             echo -e "${YELLOW}⚠️  Please edit .env file with your API keys before continuing.${NC}"
             echo -e "${YELLOW}   Required: MCP_API_KEY (generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\")${NC}"
             echo -e "${YELLOW}   Optional: ELEVENLABS_API_KEY, OPENWEATHER_API_KEY, etc.${NC}"
             exit 1
         else
-            echo -e "${RED}Please create .env file from .env.template${NC}"
+            echo -e "${RED}Please create .env file from .env.example${NC}"
             exit 1
         fi
     fi
@@ -220,9 +220,9 @@ echo "============================================"
 
 # Start Jarvis with mode argument if provided (using quiet wrapper)
 if [ "$1" ]; then
-    python run_quiet.py python main.py "$1"
+    python scripts/run_quiet.py python main.py "$1"
 else
-    python run_quiet.py python main.py
+    python scripts/run_quiet.py python main.py
 fi
 
 # Enhanced cleanup on exit

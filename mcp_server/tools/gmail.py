@@ -9,20 +9,17 @@ import os
 import json
 import pickle
 import base64
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 import re
-import uuid
 from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import asyncio
 from pathlib import Path
 import logging
 from . import BaseTool
@@ -537,7 +534,9 @@ class GmailTool(BaseTool):
             # Search for email patterns and insights
             insights_query = f"email patterns analysis last {days_back} days"
             
-            results = self.gmail_intelligence.query(
+            # TODO: insight aggregation is not implemented yet; the query only
+            # verifies the collection is reachable.
+            self.gmail_intelligence.query(
                 query_texts=[insights_query],
                 n_results=20
             )

@@ -9,7 +9,6 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 from dotenv import load_dotenv
-import stat
 
 # Load environment variables from .env file if it exists
 load_dotenv()

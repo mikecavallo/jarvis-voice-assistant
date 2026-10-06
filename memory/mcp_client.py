@@ -6,13 +6,22 @@ and execute various tools like weather, crypto, news, search, etc.
 """
 
 import aiohttp
-import asyncio
+import re
 import logging
 import os
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
+from dotenv import load_dotenv
+
+load_dotenv()  # this module can be imported before config.py loads .env
+
 logger = logging.getLogger(__name__)
+
+def _contains_any(text: str, keywords: List[str]) -> bool:
+    """Whole-word/phrase match, so "ls" does not fire on "emails" or "eth" on "something"."""
+    return any(re.search(rf"\b{re.escape(keyword)}\b", text) for keyword in keywords)
+
 
 @dataclass
 class MCPTool:
@@ -31,8 +40,9 @@ class MCPClient:
     real-time data through various tools.
     """
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
-        """Initialize MCP client."""
+    def __init__(self, base_url: Optional[str] = None):
+        """Initialize MCP client (MCP_SERVER_URL, else 127.0.0.1:$MCP_PORT, default 8000)."""
+        base_url = base_url or os.getenv("MCP_SERVER_URL") or f"http://127.0.0.1:{os.getenv('MCP_PORT', '8000')}"
         self.base_url = base_url.rstrip('/')
         self.session = None
         self.available_tools = {}
@@ -71,17 +81,17 @@ class MCPClient:
             ),
             "filesystem": MCPTool(
                 name="filesystem",
-                endpoint="/filesystem",
+                endpoint="/fs",
                 description="List and browse files and directories",
                 parameters=["path", "operation"],
-                requires_auth=False
+                requires_auth=True
             ),
             "system": MCPTool(
                 name="system",
                 endpoint="/system",
                 description="Execute system commands safely",
                 parameters=["command"],
-                requires_auth=False
+                requires_auth=True
             ),
             "calendar": MCPTool(
                 name="calendar",
@@ -201,13 +211,30 @@ class MCPClient:
         """Search the web."""
         return await self.call_tool("search", query=query, num_results=num_results)
     
+    async def _post_json(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """POST a JSON body to an authenticated server path."""
+        api_key = os.getenv("MCP_API_KEY")
+        if not api_key:
+            return {"success": False, "error": "MCP_API_KEY environment variable not set"}
+        session = await self._get_session()
+        try:
+            async with session.post(
+                f"{self.base_url}{path}", json=body, headers={"Authorization": f"Bearer {api_key}"}
+            ) as response:
+                if response.status == 200:
+                    return {"success": True, "data": await response.json()}
+                return {"success": False, "error": f"HTTP {response.status}: {await response.text()}"}
+        except Exception as e:
+            logger.error(f"Error calling MCP server {path}: {e}")
+            return {"success": False, "error": str(e)}
+
     async def list_files(self, path: str = ".") -> Dict[str, Any]:
-        """List files in directory."""
-        return await self.call_tool("filesystem", path=path, operation="list")
-    
+        """List files in a directory (relative to the server's home-directory sandbox)."""
+        return await self._post_json(f"/fs/{path.lstrip('/')}", {"action": "list", "parameters": {}})
+
     async def run_system_command(self, command: str) -> Dict[str, Any]:
-        """Run system command safely."""
-        return await self.call_tool("system", command=command)
+        """Run a whitelisted system command on the server."""
+        return await self._post_json(f"/system/{command}", {})
     
     def get_available_tools(self) -> Dict[str, str]:
         """Get list of available tools with descriptions."""
@@ -227,38 +254,37 @@ class MCPClient:
         
         # Crypto keywords
         crypto_keywords = ["bitcoin", "btc", "ethereum", "eth", "crypto", "cryptocurrency", "price of", "dogecoin", "ada", "solana"]
-        if any(keyword in user_lower for keyword in crypto_keywords):
+        if _contains_any(user_lower, crypto_keywords):
             return "crypto"
         
         # Weather keywords  
         weather_keywords = ["weather", "temperature", "forecast", "rain", "sunny", "cloudy", "hot", "cold"]
-        if any(keyword in user_lower for keyword in weather_keywords):
+        if _contains_any(user_lower, weather_keywords):
             return "weather"
         
         # News keywords
         news_keywords = ["news", "latest news", "headlines", "breaking news", "current events"]
-        if any(keyword in user_lower for keyword in news_keywords):
+        if _contains_any(user_lower, news_keywords):
             return "news"
         
         # Search keywords
         search_keywords = ["search for", "look up", "find information", "google", "web search"]
-        if any(keyword in user_lower for keyword in search_keywords):
+        if _contains_any(user_lower, search_keywords):
             return "search"
         
         # File system keywords
         fs_keywords = ["list files", "show files", "directory", "folder contents", "ls", "dir"]
-        if any(keyword in user_lower for keyword in fs_keywords):
+        if _contains_any(user_lower, fs_keywords):
             return "filesystem"
         
         # Calendar keywords
         calendar_keywords = ["calendar", "schedule", "meeting", "appointment", "event", "what's on my calendar", "free time", "available", "busy", "august", "september", "today", "tomorrow", "next week", "next month", "add an event", "create event", "book appointment", "add appointment", "schedule meeting", "dentist"]
-        if any(keyword in user_lower for keyword in calendar_keywords):
-            print(f"🔍 DEBUG: Calendar tool detected for: '{user_input}'")
+        if _contains_any(user_lower, calendar_keywords):
             return "calendar"
         
         # Gmail keywords
         gmail_keywords = ["email", "gmail", "inbox", "messages", "send email", "draft", "mail", "unread emails", "recent emails"]
-        if any(keyword in user_lower for keyword in gmail_keywords):
+        if _contains_any(user_lower, gmail_keywords):
             return "gmail"
         
         return None
@@ -275,7 +301,7 @@ class MCPClient:
             try:
                 import asyncio
                 asyncio.create_task(self.session.close())
-            except:
+            except Exception:
                 pass
 
 # Global instance

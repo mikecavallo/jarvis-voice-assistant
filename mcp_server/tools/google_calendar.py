@@ -5,17 +5,13 @@ Provides comprehensive Google Calendar integration with OAuth2 authentication.
 Supports event management, conflict detection, smart scheduling, and meeting preparation.
 """
 
-import os
-import json
 import pickle
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import asyncio
 from pathlib import Path
 import logging
 from . import BaseTool
@@ -460,9 +456,8 @@ class GoogleCalendarTool(BaseTool):
             
             if results['documents'][0]:
                 # Process stored insights
-                for i, doc in enumerate(results['documents'][0]):
-                    metadata = results['metadatas'][0][i]
-                    # Add insight processing logic here
+                # TODO: insight processing is not implemented yet
+                pass
             
             return {"insights": insights}
             

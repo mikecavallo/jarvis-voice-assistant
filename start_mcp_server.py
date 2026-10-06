@@ -10,13 +10,19 @@ Usage:
 """
 
 import argparse
+import os
+
 import uvicorn
+from dotenv import load_dotenv
+
 from mcp_server import app
+
+load_dotenv()  # so MCP_HOST / MCP_PORT from .env apply to the argparse defaults
 
 def main():
     parser = argparse.ArgumentParser(description="Start Jarvis MCP Server")
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
+    parser.add_argument("--host", default=os.getenv("MCP_HOST", "127.0.0.1"), help="Host to bind to")
+    parser.add_argument("--port", type=int, default=int(os.getenv("MCP_PORT", "8000")), help="Port to bind to")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
     
     args = parser.parse_args()

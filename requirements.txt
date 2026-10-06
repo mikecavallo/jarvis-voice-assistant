@@ -1,37 +1,38 @@
-# Voice Input
-SpeechRecognition==3.10.0
-# pyaudio==0.2.11  # Requires system PortAudio dev headers - install manually if needed
-faster-whisper==0.10.0
+# Runtime dependencies for the full assistant (voice + MCP server + memory).
+# Tested with Python 3.11. Direct dependencies are pinned; see requirements-dev.txt
+# for the lighter set CI uses to run the offline test suite.
+#
+# System packages needed for voice mode (not installable via pip alone):
+#   Debian/Ubuntu: sudo apt install portaudio19-dev python3-dev ffmpeg
+#   macOS:         brew install portaudio ffmpeg
+# then: pip install PyAudio==0.2.14   (SpeechRecognition uses it for the microphone)
 
-# Voice Output 
-elevenlabs==0.2.26
-pygame==2.5.2
+# Voice input
+SpeechRecognition==3.17.0
+faster-whisper==1.2.1
 
-# System Integration
-pyautogui==0.9.54
+# Voice output (ElevenLabs is called over HTTP with requests; pygame plays audio)
+pygame==2.6.1
+requests==2.34.2
 
-# MCP Server and API Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-aiohttp==3.9.1
-pydantic==2.5.0
+# Conversation (LLM fallback). Ollama is reached over HTTP and needs no package.
+openai==1.109.1
 
-# Google API Integration
-google-auth==2.25.2
-google-auth-oauthlib==1.2.0
-google-auth-httplib2==0.2.0
-google-api-python-client==2.110.0
+# MCP tool server
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+aiohttp==3.14.4
+pydantic==2.13.5
 
-# Memory Management
-chromadb==0.4.18
-langchain>=0.0.348
-langchain-community>=0.0.38
-langchain-experimental>=0.0.45
+# Gmail / Google Calendar
+google-auth==2.60.0
+google-auth-oauthlib==1.5.0
+google-auth-httplib2==0.4.4
+google-api-python-client==2.201.0
+
+# Memory
+chromadb==1.5.9
 
 # Utilities
-requests==2.31.0
-python-dotenv==1.0.0
-pytz==2023.3
-
-# Optional: If you want to use OpenAI Whisper instead
-# openai-whisper==20231117
+python-dotenv==1.2.4
+pytz==2026.5

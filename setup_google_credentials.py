@@ -11,8 +11,6 @@ for OAuth2 authentication. It guides through the process of:
 4. Downloading and placing credential files
 """
 
-import os
-import json
 import sys
 from pathlib import Path
 

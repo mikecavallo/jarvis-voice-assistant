@@ -16,7 +16,7 @@ from fastapi import FastAPI, Depends, HTTPException, Security, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 import os
 import logging
 from datetime import datetime
@@ -465,4 +465,5 @@ async def system_endpoint(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Bind to localhost by default; set MCP_HOST=0.0.0.0 only behind a firewall.
+    uvicorn.run(app, host=os.getenv("MCP_HOST", "127.0.0.1"), port=int(os.getenv("MCP_PORT", "8000")))

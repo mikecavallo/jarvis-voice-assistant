@@ -1,0 +1,15 @@
+# Offline test + lint environment (what CI installs).
+# Deliberately excludes audio, Whisper, ChromaDB and OpenAI: the tests cover the
+# parts of Jarvis that do not need a microphone, GPU or paid API.
+requests==2.34.2
+python-dotenv==1.2.4
+fastapi==0.142.2
+httpx==0.28.1
+aiohttp==3.14.4
+pydantic==2.13.5
+google-auth==2.60.0
+google-auth-oauthlib==1.5.0
+google-auth-httplib2==0.4.4
+google-api-python-client==2.201.0
+pytest==8.4.2
+ruff==0.14.0
