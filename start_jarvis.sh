@@ -220,9 +220,9 @@ echo "============================================"
 
 # Start Jarvis with mode argument if provided (using quiet wrapper)
 if [ "$1" ]; then
-    python run_quiet.py python main.py "$1"
+    python scripts/run_quiet.py python main.py "$1"
 else
-    python run_quiet.py python main.py
+    python scripts/run_quiet.py python main.py
 fi
 
 # Enhanced cleanup on exit

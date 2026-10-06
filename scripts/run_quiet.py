@@ -93,7 +93,7 @@ def run_with_filtered_output(command):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python run_quiet.py <command> [args...]")
+        print("Usage: python scripts/run_quiet.py <command> [args...]")
         sys.exit(1)
     
     # Pass through all arguments
