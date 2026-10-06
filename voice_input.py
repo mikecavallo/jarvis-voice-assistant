@@ -5,7 +5,7 @@ This module handles all aspects of voice input including:
 - Microphone configuration and calibration
 - Wake word detection
 - Voice command recognition
-- Multiple speech recognition engines (Google, Whisper)
+- Multiple speech recognition engines (Google, local Whisper, remote Whisper server)
 - Audio error handling and recovery
 
 The module is designed to be robust and handle various audio hardware configurations
@@ -20,9 +20,9 @@ import os
 import warnings
 from contextlib import redirect_stderr
 from typing import Optional, Callable
-from faster_whisper import WhisperModel
 from config import config
 from memory.state_manager import jarvis_state
+from remote_transcription import RemoteTranscriptionError, from_config as remote_from_config
 
 # Suppress audio warnings
 warnings.filterwarnings('ignore', category=UserWarning)
@@ -60,8 +60,9 @@ class VoiceInput:
         self.wake_word = config.get("general", "wake_word", "jarvis").lower()
         self.use_vad = config.get("speech_recognition", "use_voice_activity_detection", True)
         
-        # Initialize Whisper model if configured
+        # Initialize Whisper model or remote transcription client if configured
         self.whisper_model = self._initialize_whisper()
+        self.remote_transcriber = self._initialize_remote()
         
         # Calibrate microphone for ambient noise
         self._calibrate_microphone()
@@ -111,7 +112,26 @@ class VoiceInput:
         print("⚠️  Using fallback microphone configuration")
         return sr.Microphone()
     
-    def _initialize_whisper(self) -> Optional[WhisperModel]:
+    def _initialize_remote(self):
+        """
+        Set up the remote GPU transcription client when engine is "remote".
+
+        Returns:
+            RemoteTranscriber or None if not configured (falls back to Google)
+        """
+        if config.get("speech_recognition", "engine") != "remote":
+            return None
+        transcriber = remote_from_config(config)
+        if transcriber is None:
+            print("Warning: engine is 'remote' but SPEECH_RECOGNITION_REMOTE_URL is not set")
+            print("Falling back to Google Speech Recognition")
+            return None
+        status = "reachable" if transcriber.health() else "NOT reachable yet"
+        print(f"Remote transcription server {transcriber.base_url} is {status}")
+        jarvis_state.log_action("remote_stt_initialized", transcriber.endpoint, "voice_input")
+        return transcriber
+
+    def _initialize_whisper(self):
         """
         Initialize Whisper model if configured.
         
@@ -122,6 +142,9 @@ class VoiceInput:
             return None
             
         try:
+            # Imported lazily so Google/remote modes do not need faster-whisper installed
+            from faster_whisper import WhisperModel
+
             # Use medium model for much better accuracy (larger but more accurate)
             model = WhisperModel("medium", device="cpu", compute_type="int8")
             print("✅ Whisper medium model loaded successfully!")
@@ -184,7 +207,7 @@ class VoiceInput:
                 # Quick recognition for wake word detection
                 text = self._recognize_speech(audio, quick=True)
                 if text and self.wake_word in text.lower():
-                    print(f"Wake word detected! Listening for command...")
+                    print("Wake word detected! Listening for command...")
                     jarvis_state.log_action("wake_word_detected", f"Detected: {text}", "voice_input")
                     
                     # Switch to command listening mode
@@ -294,7 +317,7 @@ class VoiceInput:
             # Fallback to regular listening
             try:
                 return self.recognizer.listen(source, timeout=3, phrase_time_limit=8)
-            except:
+            except Exception:
                 return None
     
     def _recognize_speech(self, audio_data, quick: bool = False) -> Optional[str]:
@@ -311,6 +334,8 @@ class VoiceInput:
         engine = config.get("speech_recognition", "engine", "google")
         
         try:
+            if engine == "remote" and self.remote_transcriber:
+                return self._recognize_with_remote(audio_data)
             if engine == "whisper" and self.whisper_model:
                 # Always use Whisper when available and configured
                 return self._recognize_with_whisper(audio_data)
@@ -341,6 +366,21 @@ class VoiceInput:
             print(f"Google Speech Recognition error: {e}")
             return None
     
+    def _recognize_with_remote(self, audio_data) -> Optional[str]:
+        """
+        Recognize speech on a remote jarvis-gpu-transcription server.
+
+        Falls back to Google Speech Recognition if the server is unreachable.
+        """
+        wav_data = audio_data.get_wav_data(convert_rate=16000, convert_width=2)
+        language = config.get("speech_recognition", "language", "en-US")
+        try:
+            return self.remote_transcriber.transcribe(wav_data, language=language)
+        except RemoteTranscriptionError as e:
+            print(f"Remote transcription error: {e}. Falling back to Google.")
+            jarvis_state.log_action("remote_stt_error", str(e), "voice_input")
+            return self._recognize_with_google(audio_data)
+
     def _recognize_with_whisper(self, audio_data) -> Optional[str]:
         """
         Recognize speech using local Whisper model.
@@ -356,7 +396,7 @@ class VoiceInput:
             # Use 16kHz sample rate which is optimal for Whisper
             try:
                 wav_data = audio_data.get_wav_data(convert_rate=16000, convert_width=2)
-            except:
+            except Exception:
                 # Fallback: use original sample rate if conversion fails
                 wav_data = audio_data.get_wav_data()
             
