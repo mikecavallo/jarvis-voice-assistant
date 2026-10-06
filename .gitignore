@@ -1,48 +1,47 @@
-# Environment variables (contains sensitive data)
+# Secrets (.env.example is committed on purpose; it only holds placeholders)
 .env
-.env.template
-.env.example
-
-# API Keys and secrets
 config.json
+credentials/
+*.pickle
 
-# Virtual environment
+# Virtual environments
 jarvis_env/
 venv/
+.venv/
 env/
 
-# Python cache
+# Python cache and tooling
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Personal memory (may contain user data)
+# Runtime data written by Jarvis (may contain conversations or personal facts)
+jarvis_state.json
 memory/personal_memory.json
 memory/chroma_db/
+audio_output/
 
-# State files (may contain session data)
-jarvis_state.json
-
-# Logs
+# Logs and process files
 logs/
 *.log
-mcp_server.log
-
-# Process IDs
 *.pid
-.mcp_server.pid
+.jarvis_startup.lock
 
 # Audio files
 *.wav
+*.mp3
 
-# OS files
+# OS / IDE
 .DS_Store
 Thumbs.db
-
-# IDE files
 .vscode/
 .idea/
 
 # Temporary files
 *.tmp
 temp/
+backups/
