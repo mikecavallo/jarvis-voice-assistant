@@ -1,149 +1,47 @@
-# Security Implementation - Jarvis Voice Assistant
+# Security notes
 
-## Security Status: ✅ SECURED
+Jarvis is a personal, single-user project meant to run on your own machine.
+It has not had an external security review. This file lists the protections that
+exist in the code so you can judge whether they fit your setup.
 
-After comprehensive security review and fixes, Jarvis Voice Assistant implements enterprise-grade security practices.
+## What the code does
 
-## 🔒 Security Features Implemented
+- **Secrets stay in the environment.** API keys are read from `.env` / environment
+  variables. `config.py` warns if a key-like value is written to `config.json`, and
+  writes that file with mode 600. `.env`, `config.json` and `credentials/` are
+  git-ignored.
+- **Tool server authentication.** Every tool endpoint except `GET /health` requires
+  `Authorization: Bearer $MCP_API_KEY`. If `MCP_API_KEY` is unset the server
+  refuses requests (HTTP 500) instead of running open.
+- **Local binding.** The tool server binds `127.0.0.1` by default
+  (`MCP_HOST` to change it). CORS is limited to `ALLOWED_ORIGINS`.
+- **Rate limiting.** In-memory sliding window per client IP
+  (`RATE_LIMIT_PER_MINUTE`, default 60; 30/min for Gmail and Calendar).
+- **Input validation.** Query parameters for search, weather, crypto and news are
+  length-limited and rejected if they contain shell metacharacters or script/URL
+  schemes.
+- **Filesystem sandbox.** The filesystem tool resolves paths and refuses anything
+  outside the user's home directory (component-wise check, covered by tests).
+- **System commands.** Disabled unless `SYSTEM_COMMANDS_ENABLED=true`, and even then
+  only whitelisted argument lists run (`shell=False`). The default whitelist is a
+  single `echo` test command.
+- **Security headers** (`X-Frame-Options`, `X-Content-Type-Options`, CSP, HSTS) on
+  tool server responses.
 
-### 1. **API Key Management**
-- ✅ No hardcoded API keys in source code
-- ✅ All secrets loaded from environment variables
-- ✅ Secure config.json without sensitive data
-- ✅ Comprehensive .env.example template provided
+## Known limits
 
-### 2. **Authentication & Authorization**
-- ✅ Bearer token authentication for MCP server
-- ✅ Required environment variable for API key
-- ✅ Rate limiting implementation
-- ✅ IP-based request tracking and logging
+- The rate limiter trusts `X-Forwarded-For`, so it is only meaningful when the
+  server is not exposed directly to untrusted clients.
+- There is no TLS in the app; put it behind a reverse proxy if it ever leaves
+  localhost.
+- The filesystem tool can read and write anything in your home directory once a
+  caller has the API key.
+- Conversation history and learned personal facts are stored unencrypted in
+  `memory/` and `jarvis_state.json`.
+- Gmail and Calendar OAuth tokens are pickled in `credentials/`; protect that
+  directory like a password.
 
-### 3. **Input Validation & Sanitization**
-- ✅ All user inputs validated and sanitized
-- ✅ Maximum length limits enforced
-- ✅ SQL injection prevention measures
-- ✅ Path traversal protection
+## Reporting
 
-### 4. **Network Security**
-- ✅ CORS policy restricted to specific origins
-- ✅ Security headers on all responses
-- ✅ HTTPS enforcement capability
-- ✅ Request/response logging
-
-### 5. **System Command Protection**
-- ✅ System commands disabled by default
-- ✅ Whitelist-only command execution
-- ✅ Environment flag required to enable
-- ✅ Comprehensive audit logging
-
-### 6. **File Security**
-- ✅ Secure file permissions (600) on config files
-- ✅ .gitignore prevents sensitive data commits
-- ✅ Personal data storage protection
-- ✅ Temporary file cleanup
-
-## 🛡️ Security Configuration
-
-### Environment Variables Required
-```bash
-# Generate secure keys
-MCP_API_KEY=$(openssl rand -hex 32)
-JWT_SECRET=$(openssl rand -hex 32)
-
-# API Keys (never commit these)
-ELEVENLABS_API_KEY=your_key_here
-OPENAI_API_KEY=your_key_here
-OPENWEATHER_API_KEY=your_key_here
-SERPAPI_API_KEY=your_key_here
-NEWSAPI_API_KEY=your_key_here
-
-# Security Configuration
-ALLOWED_ORIGINS=http://localhost:3000
-SYSTEM_COMMANDS_ENABLED=false
-MAX_REQUESTS_PER_MINUTE=60
-```
-
-### File Permissions
-```bash
-# Set secure permissions
-chmod 600 .env
-chmod 600 config.json
-chmod 700 memory/
-```
-
-## 🚨 Security Best Practices
-
-### For Development
-1. **Never commit API keys** - Use .env files only
-2. **Use strong random keys** - Generate with `openssl rand -hex 32`
-3. **Keep system commands disabled** - Unless specifically needed
-4. **Review logs regularly** - Monitor for suspicious activity
-5. **Update dependencies** - Keep all packages current
-
-### For Production
-1. **Use HTTPS only** - Never HTTP in production
-2. **Restrict CORS origins** - Specific domains only
-3. **Enable rate limiting** - Prevent abuse
-4. **Monitor security logs** - Set up alerting
-5. **Regular security audits** - Review code and config
-
-## 🔍 Security Monitoring
-
-### Logged Security Events
-- API key validation failures
-- Rate limit exceeded attempts
-- System command requests
-- Invalid input attempts
-- Unauthorized access attempts
-
-### Log Locations
-- Application logs: `logs/jarvis.log`
-- Security events: Logged with WARNING level
-- Access patterns: IP tracking enabled
-
-## 🚫 Removed Vulnerabilities
-
-### Fixed Issues
-- ❌ ~~Hardcoded API keys~~ → ✅ Environment variables
-- ❌ ~~Open CORS policy~~ → ✅ Restricted origins
-- ❌ ~~Unsafe system commands~~ → ✅ Whitelist only
-- ❌ ~~No input validation~~ → ✅ Comprehensive sanitization
-- ❌ ~~Missing authentication~~ → ✅ Bearer token auth
-- ❌ ~~Exposed error details~~ → ✅ Generic error messages
-
-## 📋 Security Checklist
-
-Before deployment, ensure:
-- [ ] All API keys in environment variables
-- [ ] MCP_API_KEY generated and secured  
-- [ ] CORS origins restricted to production domains
-- [ ] System commands disabled (unless needed)
-- [ ] File permissions set correctly (600/700)
-- [ ] HTTPS configured for production
-- [ ] Rate limiting enabled
-- [ ] Security headers configured
-- [ ] Log monitoring set up
-- [ ] Regular backup of encrypted data
-
-## 🆘 Security Incident Response
-
-If security breach suspected:
-1. **Immediately rotate all API keys**
-2. **Check logs for unauthorized access**
-3. **Review recent code changes**
-4. **Update environment variables**
-5. **Monitor for continued suspicious activity**
-
-## 📞 Security Contact
-
-For security issues or questions:
-- Review code with security focus
-- Test all endpoints for vulnerabilities
-- Keep dependencies updated
-- Follow OWASP security guidelines
-
----
-
-**Last Security Review**: 2025-08-06  
-**Status**: ✅ Production Ready  
-**Next Review Due**: 2025-09-06
+Open a GitHub issue for non-sensitive problems, or contact the repository owner
+through GitHub for anything that should not be public.

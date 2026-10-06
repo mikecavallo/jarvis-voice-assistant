@@ -1,7 +1,7 @@
 # Jarvis Voice Assistant - Development Task Runner
 # This Makefile provides convenient commands for development tasks
 
-.PHONY: help install setup start start-voice start-text start-test stop clean logs health check-deps test-audio dev-setup
+.PHONY: help install setup start start-voice start-text start-test stop clean logs health check-deps test-audio dev-setup lint test format
 
 # Default target
 help: ## Show this help message
@@ -165,13 +165,11 @@ format: ## Format code with black (if available)
 		echo "⚠️  black not installed, skipping formatting"; \
 	fi
 
-lint: ## Run basic linting (if flake8 available)  
-	@if command -v flake8 >/dev/null 2>&1; then \
-		echo "🔍 Running linter..."; \
-		flake8 *.py */*.py --max-line-length=100 --ignore=E203,W503 2>/dev/null || true; \
-	else \
-		echo "⚠️  flake8 not installed, skipping linting"; \
-	fi
+lint: ## Lint with ruff (same as CI)
+	@ruff check .
+
+test: ## Run the offline test suite (no mic, GPU or API keys needed)
+	@pytest
 
 backup: ## Create backup of important files
 	@echo "💾 Creating backup..."

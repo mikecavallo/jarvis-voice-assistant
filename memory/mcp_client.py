@@ -12,6 +12,10 @@ import os
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
+from dotenv import load_dotenv
+
+load_dotenv()  # this module can be imported before config.py loads .env
+
 logger = logging.getLogger(__name__)
 
 def _contains_any(text: str, keywords: List[str]) -> bool:
@@ -36,8 +40,9 @@ class MCPClient:
     real-time data through various tools.
     """
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
-        """Initialize MCP client."""
+    def __init__(self, base_url: Optional[str] = None):
+        """Initialize MCP client (MCP_SERVER_URL, else 127.0.0.1:$MCP_PORT, default 8000)."""
+        base_url = base_url or os.getenv("MCP_SERVER_URL") or f"http://127.0.0.1:{os.getenv('MCP_PORT', '8000')}"
         self.base_url = base_url.rstrip('/')
         self.session = None
         self.available_tools = {}
